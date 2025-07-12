@@ -2,21 +2,64 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <title>虚拟开奖程序</title>
+  <title>虚拟开奖程序 - 智能预测</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px; }
-    .log { white-space: pre-wrap; background: #fff; padding: 15px; border: 1px solid #ccc; height: 400px; overflow-y: scroll; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+      background: #f0f0f0;
+    }
+    .sidebar {
+      width: 200px;
+      background: #333;
+      color: white;
+      padding-top: 20px;
+    }
+    .sidebar button {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      background: none;
+      color: white;
+      font-size: 16px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .sidebar button:hover {
+      background: #444;
+    }
+    .content {
+      flex-grow: 1;
+      padding: 20px;
+    }
+    .log {
+      white-space: pre-wrap;
+      background: #fff;
+      padding: 15px;
+      border: 1px solid #ccc;
+      height: 400px;
+      overflow-y: scroll;
+    }
     input { padding: 5px; font-size: 16px; }
-    button { padding: 5px 10px; font-size: 16px; }
+    button.submit-btn { padding: 5px 10px; font-size: 16px; }
   </style>
 </head>
 <body>
-  <h2>🎰 每30秒开奖 | 显示结果后可输入 | 自动预测下一轮</h2>
-  <div class="log" id="log"></div>
-  <div>
-    <label for="userInput">⌨️ 请输入开奖号码（0-9）: </label>
-    <input type="number" id="userInput" min="0" max="9">
-    <button onclick="submitNumber()">提交</button>
+  <div class="sidebar">
+    <button onclick="setMode(30)">🎰 每30秒开奖</button>
+    <button onclick="setMode(60)">⏱️ 每1分钟开奖</button>
+  </div>
+
+  <div class="content">
+    <h2 id="title">🎰 每30秒开奖 | 显示结果后可输入 | 自动预测下一轮</h2>
+    <div class="log" id="log"></div>
+    <div>
+      <label for="userInput">⌨️ 请输入开奖号码（0-9）: </label>
+      <input type="number" id="userInput" min="0" max="9">
+      <button class="submit-btn" onclick="submitNumber()">提交</button>
+    </div>
   </div>
 
   <script>
@@ -25,11 +68,35 @@
     let lastPredicted = null;
     let inputAllowed = false;
     let timeoutId = null;
+    let currentInterval = 30;
+
+    const strategyNames = {
+      guessNearby: "相邻号法",
+      guessHot: "热号策略",
+      guessCold: "冷号策略",
+      guessRepeat: "重复策略",
+      guessFlipOddEven: "奇偶互转",
+      guessDiagonalJump: "斜跳走势",
+      guessByVibe: "心理感觉法"
+    };
+
+    function rand(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
 
     function log(message) {
       const logDiv = document.getElementById("log");
       logDiv.innerText += message + "\n";
       logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function clearAll() {
+      document.getElementById("log").innerText = "";
+      roundNum = 1;
+      history = [];
+      lastPredicted = null;
+      inputAllowed = false;
+      if (timeoutId) clearTimeout(timeoutId);
     }
 
     function getSize(num) {
@@ -39,15 +106,11 @@
     function getColor(num) {
       if (num === 0) return ["红色", "紫色"];
       if (num === 5) return ["绿色", "紫色"];
-      return num % 2 === 0 ? ["红色"] : ["绿色"]; // 奇数 → 绿色
+      return num % 2 === 0 ? ["红色"] : ["绿色"];
     }
 
     function getColorIcon(color) {
-      const icons = {
-        "红色": "🔴",
-        "绿色": "🟢",
-        "紫色": "🟣"
-      };
+      const icons = { "红色": "🔴", "绿色": "🟢", "紫色": "🟣" };
       return icons[color] || color;
     }
 
@@ -55,19 +118,74 @@
       return colors.map(c => getColorIcon(c)).join(" ");
     }
 
-    function predictNext(history) {
-      if (history.length === 0) {
-        const num = Math.floor(Math.random() * 10);
-        return [num, getSize(num)];
-      }
-      const smallCount = history.filter(h => h && h[1] === "小").length;
-      const bigCount = history.length - smallCount;
-      const num = bigCount > smallCount ? rand(5, 9) : rand(0, 4);
+    // --------- 智能预测策略集 ---------
+
+    function guessNearby(history) {
+      const base = history[history.length - 1][0];
+      const num = Math.max(0, Math.min(9, base + rand(-1, 1)));
       return [num, getSize(num)];
     }
 
-    function rand(min, max) {
-      return Math.floor(Math.random() * (max - min + 1)) + min;
+    function guessHot(history) {
+      const freq = Array(10).fill(0);
+      history.forEach(h => h && freq[h[0]]++);
+      const hot = freq.indexOf(Math.max(...freq));
+      return [hot, getSize(hot)];
+    }
+
+    function guessCold(history) {
+      const freq = Array(10).fill(0);
+      history.forEach(h => h && freq[h[0]]++);
+      const cold = freq.indexOf(Math.min(...freq));
+      return [cold, getSize(cold)];
+    }
+
+    function guessRepeat(history) {
+      const num = history[history.length - 1][0];
+      return [num, getSize(num)];
+    }
+
+    function guessFlipOddEven(history) {
+      const last = history[history.length - 1][0];
+      const num = (last % 2 === 0) ? last + 1 : last - 1;
+      const safeNum = (num < 0 || num > 9) ? rand(0, 9) : num;
+      return [safeNum, getSize(safeNum)];
+    }
+
+    function guessDiagonalJump(history) {
+      if (history.length < 2) return [rand(0, 9), getSize(rand(0, 9))];
+      const n1 = history[history.length - 1][0];
+      const n2 = history[history.length - 2][0];
+      const diff = n1 - n2;
+      const predicted = n1 + diff;
+      const safe = Math.max(0, Math.min(9, predicted));
+      return [safe, getSize(safe)];
+    }
+
+    function guessByVibe(history) {
+      const vibeNums = [3, 6, 8, 0, 9, 5, 1];
+      const num = vibeNums[rand(0, vibeNums.length - 1)];
+      return [num, getSize(num)];
+    }
+
+    function smartPredictor(history) {
+      if (history.length === 0) {
+        const num = rand(0, 9);
+        return { num, size: getSize(num), strategy: "随机初始" };
+      }
+
+      const strategies = [
+        guessNearby,
+        guessHot,
+        guessCold,
+        guessRepeat,
+        guessFlipOddEven,
+        guessDiagonalJump,
+        guessByVibe
+      ];
+      const chosen = strategies[rand(0, strategies.length - 1)];
+      const [num, size] = chosen(history);
+      return { num, size, strategy: strategyNames[chosen.name] || "未知" };
     }
 
     function drawRound() {
@@ -79,7 +197,7 @@
 
       timeoutId = setTimeout(() => {
         if (inputAllowed) {
-          log("⚠️ 未输入或输入无效，本轮跳过（未记录开奖号码）");
+          log("⚠️ 未输入或输入无效，本轮跳过");
           history.push(null);
           afterDraw();
         }
@@ -104,42 +222,52 @@
     }
 
     function afterDraw() {
-      const cleanHistory = history.filter(entry => entry !== null);
-      const [predictedNum, predictedSize] = predictNext(cleanHistory);
-      const predictedColors = getColor(predictedNum);
+      const cleanHistory = history.filter(h => h !== null);
+      const prediction = smartPredictor(cleanHistory);
+      const predictedColors = getColor(prediction.num);
 
-      log(`🔮 预测第 ${roundNum + 1} 轮号码：${predictedNum} -> ${predictedSize} | 颜色：${formatColorIcons(predictedColors)}`);
+      log(`🔮 预测第 ${roundNum + 1} 轮：${prediction.num} -> ${prediction.size} | 颜色：${formatColorIcons(predictedColors)}`);
+      log(`🧠 使用策略：${prediction.strategy}`);
       log(`----------------------`);
 
-      // 比对预测（本轮开奖结果 vs 上一轮预测）
-      if (lastPredicted !== null && history.length >= 1) {
-        const lastActual = history[history.length - 1];
-        if (lastActual) {
-          const [actualNum, actualSize, actualColors] = lastActual;
-          const [predNum, predSize] = lastPredicted;
-          const predColors = getColor(predNum);
+      if (lastPredicted && history.length >= 1) {
+        const actual = history[history.length - 1];
+        if (actual) {
+          const [actNum, actSize, actColors] = actual;
+          const matchNum = actNum === lastPredicted.num ? "✅" : "❌";
+          const matchSize = actSize === lastPredicted.size ? "✅" : "❌";
+          const matchColor = getColor(lastPredicted.num).some(c => actColors.includes(c)) ? "✅" : "❌";
 
-          const matchNumber = actualNum === predNum ? "✅" : "❌";
-          const matchSize = actualSize === predSize ? "✅" : "❌";
-          const matchColor = predColors.some(c => actualColors.includes(c)) ? "✅" : "❌";
-
-          log(`📋 上轮预测结果：`);
-          log(`号码：${predNum} ${matchNumber}`);
-          log(`颜色：${formatColorIcons(predColors)} ${matchColor}`);
-          log(`大小：${predSize} ${matchSize}`);
+          log(`📋 上轮预测比对：`);
+          log(`号码：${lastPredicted.num} ${matchNum}`);
+          log(`颜色：${formatColorIcons(getColor(lastPredicted.num))} ${matchColor}`);
+          log(`大小：${lastPredicted.size} ${matchSize}`);
         } else {
-          log("📋 上轮预测结果：无开奖数据，无法比对");
+          log("📋 上轮预测比对：无数据");
         }
       }
 
-      lastPredicted = [predictedNum, predictedSize];
-      roundNum += 1;
+      lastPredicted = prediction;
+      roundNum++;
     }
 
-    // 每秒检查一次是否到 30 秒时点，触发 drawRound()
+    function setMode(intervalSec) {
+      clearAll();
+      currentInterval = intervalSec;
+      const titleMap = {
+        30: "🎰 每30秒开奖",
+        60: "⏱️ 每1分钟开奖"
+      };
+      document.getElementById("title").innerText = `${titleMap[intervalSec]} | 显示结果后可输入 | 自动预测下一轮`;
+      log(`🔄 切换到【${intervalSec}秒】模式，已重置数据`);
+    }
+
+    // 默认启动 30 秒模式
+    setMode(30);
+
     setInterval(() => {
       const now = new Date();
-      if (now.getSeconds() % 30 === 0) {
+      if (now.getSeconds() % currentInterval === 0 && now.getMilliseconds() < 1000) {
         drawRound();
       }
     }, 1000);
