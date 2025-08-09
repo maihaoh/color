@@ -69,6 +69,13 @@
     let inputAllowed = false;
     let timeoutId = null;
     let currentInterval = 30;
+    let lastDrawSecond = -1;
+
+    // 统计数据
+    let totalRounds = 0;
+    let correctNum = 0;
+    let correctSize = 0;
+    let correctColor = 0;
 
     const strategyNames = {
       guessNearby: "相邻号法",
@@ -97,6 +104,10 @@
       lastPredicted = null;
       inputAllowed = false;
       if (timeoutId) clearTimeout(timeoutId);
+      totalRounds = 0;
+      correctNum = 0;
+      correctSize = 0;
+      correctColor = 0;
     }
 
     function getSize(num) {
@@ -119,7 +130,6 @@
     }
 
     // --------- 智能预测策略集 ---------
-
     function guessNearby(history) {
       const base = history[history.length - 1][0];
       const num = Math.max(0, Math.min(9, base + rand(-1, 1)));
@@ -173,7 +183,6 @@
         const num = rand(0, 9);
         return { num, size: getSize(num), strategy: "随机初始" };
       }
-
       const strategies = [
         guessNearby,
         guessHot,
@@ -199,6 +208,7 @@
         if (inputAllowed) {
           log("⚠️ 未输入或输入无效，本轮跳过");
           history.push(null);
+          inputAllowed = false;
           afterDraw();
         }
       }, 15000);
@@ -206,6 +216,7 @@
 
     function submitNumber() {
       if (!inputAllowed) return;
+      inputAllowed = false; // 防止重复提交
       const input = document.getElementById("userInput").value;
       const num = parseInt(input);
       if (!isNaN(num) && num >= 0 && num <= 9) {
@@ -214,10 +225,10 @@
         const colors = getColor(num);
         log(`🎯 开奖结果：${num} -> ${size} | 颜色：${formatColorIcons(colors)}`);
         history.push([num, size, colors]);
-        inputAllowed = false;
         afterDraw();
       } else {
         log("⚠️ 输入无效，请输入 0-9 的数字");
+        afterDraw();
       }
     }
 
@@ -228,7 +239,6 @@
 
       log(`🔮 预测第 ${roundNum + 1} 轮：${prediction.num} -> ${prediction.size} | 颜色：${formatColorIcons(predictedColors)}`);
       log(`🧠 使用策略：${prediction.strategy}`);
-      log(`----------------------`);
 
       if (lastPredicted && history.length >= 1) {
         const actual = history[history.length - 1];
@@ -238,16 +248,23 @@
           const matchSize = actSize === lastPredicted.size ? "✅" : "❌";
           const matchColor = getColor(lastPredicted.num).some(c => actColors.includes(c)) ? "✅" : "❌";
 
+          totalRounds++;
+          if (matchNum === "✅") correctNum++;
+          if (matchSize === "✅") correctSize++;
+          if (matchColor === "✅") correctColor++;
+
           log(`📋 上轮预测比对：`);
           log(`号码：${lastPredicted.num} ${matchNum}`);
           log(`颜色：${formatColorIcons(getColor(lastPredicted.num))} ${matchColor}`);
           log(`大小：${lastPredicted.size} ${matchSize}`);
+          log(`📊 总局数：${totalRounds} | 号码命中率 ${(correctNum/totalRounds*100).toFixed(1)}% | 大小命中率 ${(correctSize/totalRounds*100).toFixed(1)}% | 颜色命中率 ${(correctColor/totalRounds*100).toFixed(1)}%`);
         } else {
           log("📋 上轮预测比对：无数据");
         }
       }
 
       lastPredicted = prediction;
+      log(`----------------------`);
       roundNum++;
     }
 
@@ -267,10 +284,11 @@
 
     setInterval(() => {
       const now = new Date();
-      if (now.getSeconds() % currentInterval === 0 && now.getMilliseconds() < 1000) {
+      if (now.getSeconds() % currentInterval === 0 && now.getSeconds() !== lastDrawSecond) {
+        lastDrawSecond = now.getSeconds();
         drawRound();
       }
-    }, 1000);
+    }, 200);
   </script>
 </body>
 </html>
