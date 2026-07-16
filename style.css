@@ -1,322 +1,102 @@
-/* 全局变量定义：黑金主题色 */
 :root {
-    --bg-main: #0d0e12;
-    --bg-card: #181a20;
-    --bg-sidebar: #111318;
-    --border-color: #2b2f3a;
+    --bg-main: #0a0b0d;
+    --bg-card: #14161c;
+    --bg-sidebar: #0f1014;
+    --border-color: #222630;
     --text-main: #eaecef;
-    --text-muted: #848e9c;
+    --text-muted: #707a8a;
     --gold: #f0b90b;
-    --gold-hover: #fcd535;
     --neon-green: #0ecb81;
     --neon-red: #f6465d;
     --neon-purple: #b72fc4;
+    
+    /* 百家乐专属标准色 */
+    --bac-banker: #e02020; /* 庄 - 红 */
+    --bac-player: #0052d9; /* 闲 - 蓝 */
+    --bac-tie: #2ba471;    /* 和 - 绿 */
 }
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+body { background-color: var(--bg-main); color: var(--text-main); overflow-x: hidden; }
+.dashboard-container { display: flex; min-height: 100vh; }
 
-body {
-    background-color: var(--bg-main);
-    color: var(--text-main);
-    overflow-x: hidden;
-}
+/* 侧边栏与分类切换 */
+.sidebar { width: 340px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border-color); padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+.brand h2 { color: var(--gold); font-size: 20px; letter-spacing: 1px; }
+.brand .version { font-size: 11px; background: #222630; color: var(--text-muted); padding: 2px 6px; border-radius: 4px; float: right; }
 
-/* 布局结构 */
-.dashboard-container {
-    display: flex;
-    min-height: 100vh;
-}
+.category-switcher { display: flex; flex-direction: column; gap: 10px; margin-top: 5px; }
+.cat-btn { background: #1c1f26; border: 1px solid var(--border-color); color: var(--text-muted); padding: 12px; border-radius: 6px; cursor: pointer; text-align: left; transition: all 0.2s; display: flex; flex-direction: column; }
+.cat-btn .icon { font-size: 16px; margin-bottom: 2px; }
+.cat-btn small { font-size: 10px; color: #505866; }
+.cat-btn:hover { border-color: var(--gold); color: var(--text-main); }
+.cat-btn.active { background: linear-gradient(135deg, #2b2f3a, #1c1f26); border-color: var(--gold); color: var(--gold); font-weight: bold; }
 
-/* 侧边栏样式 */
-.sidebar {
-    width: 320px;
-    background-color: var(--bg-sidebar);
-    border-right: 1px solid var(--border-color);
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
+/* 计时器与数据网格 */
+.timer-card { border-left: 4px solid var(--gold); }
+.timer-display { font-size: 44px; font-family: monospace; font-weight: bold; color: var(--gold); text-shadow: 0 0 10px rgba(240,185,11,0.1); }
+.period-info { font-size: 13px; color: var(--text-muted); margin-top: 5px; }
+.sync-status { font-size: 11px; color: var(--neon-green); margin-top: 5px; }
+.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.stat-item { background: rgba(255, 255, 255, 0.01); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03); }
+.stat-label { font-size: 12px; color: var(--text-muted); }
+.stat-value { font-size: 18px; font-weight: bold; margin-top: 2px; }
+.stat-value.highlight { color: var(--gold); }
 
-.brand h2 {
-    color: var(--gold);
-    font-size: 22px;
-    letter-spacing: 1px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
+/* 主面板控制 */
+.main-content { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 20px; max-width: calc(100vw - 340px); }
+.game-panel { display: none; flex-direction: column; gap: 20px; }
+.game-panel.active-panel { display: flex; }
 
-.brand .version {
-    font-size: 12px;
-    background: #2b2f3a;
-    color: var(--text-muted);
-    padding: 2px 6px;
-    border-radius: 4px;
-}
+.card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; }
+.card h3 { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; font-weight: 600; text-transform: uppercase; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.card-header h3 { margin-bottom: 0; }
 
-/* 主面板样式 */
-.main-content {
-    flex: 1;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    max-width: calc(100vw - 320px);
-}
+/* 预测网格 */
+.confidence-container { font-size: 12px; color: var(--text-muted); }
+.conf-val { color: var(--gold); font-weight: bold; }
+.prediction-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+.pred-box { background: rgba(255,255,255,0.01); border: 1px dashed var(--border-color); border-radius: 6px; padding: 15px; text-align: center; display: flex; flex-direction: column; gap: 6px; }
+.pred-title { font-size: 12px; color: var(--text-muted); }
+.pred-result { font-size: 22px; font-weight: bold; color: var(--text-main); }
 
-/* 通用卡片组件 */
-.card {
-    background-color: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 20px;
-}
+/* 百家乐特异性UI */
+.bac-card { border-top: 4px solid var(--bac-player); }
+.baccarat-grid { grid-template-columns: 1.5fr 1fr 1fr; }
+.bac-main-box { background: rgba(0, 82, 219, 0.03); border: 1px solid rgba(0, 82, 219, 0.2); }
 
-.card h3 {
-    font-size: 14px;
-    color: var(--text-muted);
-    margin-bottom: 15px;
-    font-weight: 600;
-}
+/* 分析区域布局 */
+.analysis-section { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
+.matrix-grid { display: flex; flex-direction: column; gap: 8px; }
+.matrix-item { display: flex; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.01); border-radius: 4px; font-size: 13px; border: 1px solid rgba(255,255,255,0.02); }
+.matrix-item .score { font-weight: bold; color: var(--gold); }
+.chart-container { height: 180px; position: relative; }
 
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-}
+/* 历史表格与美化 */
+.table-wrapper { max-height: 350px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+th, td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); }
+th { color: var(--text-muted); background-color: var(--bg-card); position: sticky; top: 0; z-index: 2; }
+tr:hover td { background-color: rgba(255, 255, 255, 0.01); }
 
-.card-header h3 {
-    margin-bottom: 0;
-}
+.btn-clear { background: transparent; border: 1px solid var(--neon-red); color: var(--neon-red); padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+.btn-clear:hover { background: var(--neon-red); color: #fff; }
 
-/* 倒计时特异样式 */
-.timer-card {
-    border-left: 4px solid var(--gold);
-}
-
-.timer-display {
-    font-size: 48px;
-    font-family: monospace;
-    font-weight: bold;
-    color: var(--gold);
-    text-shadow: 0 0 10px rgba(240, 185, 11, 0.2);
-    margin-bottom: 10px;
-}
-
-.period-info {
-    font-size: 13px;
-    color: var(--text-muted);
-}
-
-.period-info span {
-    color: var(--text-main);
-    font-weight: bold;
-}
-
-.sync-status {
-    font-size: 11px;
-    color: var(--neon-green);
-    margin-top: 8px;
-}
-
-/* 统计网格 */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-}
-
-.stat-item {
-    background: rgba(255, 255, 255, 0.02);
-    padding: 10px;
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.stat-label {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-bottom: 4px;
-}
-
-.stat-value {
-    font-size: 18px;
-    font-weight: bold;
-}
-
-.stat-value.highlight {
-    color: var(--gold);
-}
-
-/* AI 预测看板 */
-.confidence-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 12px;
-    color: var(--text-muted);
-}
-
-#confidence-level {
-    color: var(--gold);
-    font-weight: bold;
-}
-
-.progress-bar {
-    width: 100px;
-    height: 6px;
-    background: #2b2f3a;
-    border-radius: 3px;
-    overflow: hidden;
-}
-
-.progress {
-    width: 0%;
-    height: 100%;
-    background: linear-gradient(90deg, var(--gold), var(--neon-green));
-    transition: width 0.5s ease;
-}
-
-.prediction-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-}
-
-.pred-box {
-    background: rgba(255, 255, 255, 0.01);
-    border: 1px dashed var(--border-color);
-    border-radius: 6px;
-    padding: 15px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.pred-title {
-    font-size: 12px;
-    color: var(--text-muted);
-}
-
-.pred-result {
-    font-size: 20px;
-    font-weight: bold;
-    color: var(--text-main);
-}
-
-/* 策略矩阵与图表并排 */
-.analysis-section {
-    display: grid;
-    grid-template-columns: 350px 1fr;
-    gap: 20px;
-}
-
-.matrix-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.matrix-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 4px;
-    font-size: 13px;
-}
-
-.matrix-item .score {
-    font-weight: bold;
-    color: var(--gold);
-}
-
-.chart-container {
-    height: 200px;
-    position: relative;
-}
-
-/* 历史数据表格 */
-.table-wrapper {
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: left;
-    font-size: 13px;
-}
-
-th, td {
-    padding: 12px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-th {
-    color: var(--text-muted);
-    font-weight: 600;
-    position: sticky;
-    top: 0;
-    background-color: var(--bg-card);
-    z-index: 1;
-}
-
-tr:hover td {
-    background-color: rgba(255, 255, 255, 0.01);
-}
-
-/* 按钮样式 */
-.btn-clear {
-    background: transparent;
-    border: 1px solid var(--neon-red);
-    color: var(--neon-red);
-    padding: 4px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.2s;
-}
-
-.btn-clear:hover {
-    background: var(--neon-red);
-    color: #fff;
-}
-
-/* 实用状态类（JS切换） */
-.text-banker { color: #186bf2; font-weight: bold; } /* 庄-蓝 */
-.text-player { color: var(--gold); font-weight: bold; } /* 闲-金 */
-.text-big { color: #ff9f43; font-weight: bold; }
-.text-small { color: #00d2d3; font-weight: bold; }
+/* 全局辅助染色类 */
+.txt-banker { color: var(--bac-banker) !important; font-weight: bold; }
+.txt-player { color: var(--bac-player) !important; font-weight: bold; }
+.txt-tie { color: var(--bac-tie) !important; font-weight: bold; }
+.txt-big { color: #ff9f43; font-weight: bold; }
+.txt-small { color: #00d2d3; font-weight: bold; }
 
 .bg-red { color: var(--neon-red); font-weight: bold; }
 .bg-green { color: var(--neon-green); font-weight: bold; }
 .bg-purple { color: var(--neon-purple); font-weight: bold; }
 
-.status-win { color: var(--neon-green); font-weight: bold; }
-.status-lose { color: var(--neon-red); font-weight: bold; }
+.win { color: var(--neon-green); font-weight: bold; }
+.lose { color: var(--neon-red); font-weight: bold; }
 
-/* 滚动条美化 */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-::-webkit-scrollbar-track {
-    background: var(--bg-main);
-}
-::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
-}
+/* 滚动条 */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
