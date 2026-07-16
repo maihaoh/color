@@ -1,109 +1,133 @@
 /**
- * AI Virtual Predictor V3 - 多维度策略分析引擎
- * 对历史开奖号码进行多维度的量化特征提取与打分
+ * AI Multi-Predictor V3.5 - 双游戏策略分析矩阵
+ * 包含 Wingo 的数字特征拆解 与 百家乐(DG)的路单破路判定算法
  */
 const StrategyEngine = {
     /**
-     * 对当前的开奖历史进行全维度策略矩阵打分
-     * @param {Array} history 历史开奖记录数组
-     * @returns {Object} 包含各项维度策略得分的统计结果 (0-100分)
+     * Wingo 策略分析入口
      */
-    analyze(history) {
-        // 如果数据不足，返回基础平衡分 (50分)
+    analyzeWingo(history) {
         if (!history || history.length < 5) {
             return { hot: 50, cold: 50, neighbor: 50, span: 50, oe: 50, bs: 50 };
         }
-
-        // 提取纯号码数组（最近的排在前面）
         const numbers = history.map(item => Number(item.number));
-        
         return {
-            hot: this.calcHotScore(numbers),
-            cold: this.calcColdScore(numbers),
-            neighbor: this.calcNeighborScore(numbers),
-            span: this.calcSpanScore(numbers),
-            oe: this.calcOEScore(numbers),
-            bs: this.calcBSScore(numbers)
+            hot: this.calcWingoHot(numbers),
+            cold: this.calcWingoCold(numbers),
+            neighbor: this.calcWingoNeighbor(numbers),
+            span: this.calcWingoSpan(numbers),
+            oe: this.calcWingoOE(numbers),
+            bs: this.calcWingoBS(numbers)
         };
     },
 
-    /**
-     * 1. 热号追踪打分 (分析最近 5 期号码在最近 20 期内的重复热度)
-     */
-    calcHotScore(numbers) {
-        const recent = numbers.slice(0, 5);
-        const pool = numbers.slice(0, 20);
-        let matchCount = 0;
-        
-        recent.forEach(num => {
-            matchCount += pool.filter(n => n === num).length - 1; 
-        });
-
-        // 映射到 0 - 100 分之间
-        return Math.min(100, Math.max(10, 40 + (matchCount * 12)));
+    /* ================= Wingo 算法子项 ================= */
+    calcWingoHot(nums) {
+        const recent = nums.slice(0, 5), pool = nums.slice(0, 20);
+        let matches = 0;
+        recent.forEach(n => { matches += pool.filter(p => p === n).length - 1; });
+        return Math.min(100, Math.max(10, 40 + (matches * 12)));
+    },
+    calcWingoCold(nums) {
+        let missing = nums.slice(1).indexOf(nums[0]);
+        if (missing === -1) missing = 30;
+        return Math.min(100, Math.max(20, 30 + (missing * 3.5)));
+    },
+    calcWingoNeighbor(nums) {
+        let diff = 0; const count = Math.min(10, nums.length - 1);
+        for (let i = 0; i < count; i++) diff += Math.abs(nums[i] - nums[i + 1]);
+        return Math.min(100, Math.max(15, Math.floor(100 - ((diff / count) * 12))));
+    },
+    calcWingoSpan(nums) {
+        const chunk = nums.slice(0, 10);
+        return Math.min(100, Math.max(10, Math.floor((Math.max(...chunk) - Math.min(...chunk)) * 11)));
+    },
+    calcWingoOE(nums) {
+        const chunk = nums.slice(0, 15);
+        return Math.floor((chunk.filter(n => n % 2 !== 0).length / chunk.length) * 100);
+    },
+    calcWingoBS(nums) {
+        const chunk = nums.slice(0, 15);
+        return Math.floor((chunk.filter(n => n >= 5).length / chunk.length) * 100);
     },
 
     /**
-     * 2. 冷号遗漏打分 (判断最新开出号码是否属于长期未出现的“冷号爆发”)
+     * 百家乐 策略分析入口 (DG 规则)
+     * 核心算法：提取大路单，模拟大眼仔路的正反性（齐整、有脚、撞红）
      */
-    calcColdScore(numbers) {
-        const latest = numbers[0];
-        // 查找上一次出现该号码的间隔期数
-        let missingLimit = numbers.slice(1).indexOf(latest);
-        if (missingLimit === -1) missingLimit = 30; // 长期未出现
-
-        return Math.min(100, Math.max(20, 30 + (missingLimit * 3.5)));
-    },
-
-    /**
-     * 3. 邻号跳跃打分 (计算相邻两期号码之间的绝对差值走势)
-     * 差值在 1 左右代表邻号高频，差值过大代表剧烈跳跃
-     */
-    calcNeighborScore(numbers) {
-        let diffSum = 0;
-        const count = Math.min(10, numbers.length - 1);
-        
-        for (let i = 0; i < count; i++) {
-            diffSum += Math.abs(numbers[i] - numbers[i + 1]);
+    analyzeBaccarat(history) {
+        if (!history || history.length < 3) {
+            return { trendBias: 50, bigEyeScore: 50, jumpRate: 50, longStreak: 50, pairProb: 10, naturalProb: 15 };
         }
-        
-        const avgDiff = diffSum / count;
-        // 平均差值在 1-3 之间得分较高（平稳走势），偏离则说明跳跃剧烈
-        return Math.min(100, Math.max(15, Math.floor(100 - (avgDiff * 12))));
-    },
 
-    /**
-     * 4. 跨度震荡打分 (计算最近几期最大值与最小值的起伏波动)
-     */
-    calcSpanScore(numbers) {
-        const chunk = numbers.slice(0, 10);
-        const max = Math.max(...chunk);
-        const min = Math.min(...chunk);
-        const span = max - min; // 当前统计区间的极差
+        // 提取纯结果序列 (例如: ['庄', '闲', '庄', '庄', '和'])
+        const results = history.map(item => item.side).reverse(); // 转为正序计算大路
 
-        // 极差稳定在 5-7 说明震荡健康，极差过小(0-2)或过大(9)得分会呈现两极分化
-        return Math.min(100, Math.max(10, Math.floor(span * 11)));
-    },
+        // 1. 构建简化大路网格（按长龙换列原则）
+        const bigRoad = [];
+        let currentCol = [];
+        let lastResult = null;
 
-    /**
-     * 5. 单双奇偶比例偏离度打分 (50分为奇偶极度平衡，两极代表偏向)
-     */
-    calcOEScore(numbers) {
-        const chunk = numbers.slice(0, 15);
-        const odds = chunk.filter(n => n % 2 !== 0).length;
-        const ratio = odds / chunk.length;
+        results.forEach(res => {
+            if (res === '和') return; // “和”在路单判定中通常不换列
+            if (!lastResult) {
+                currentCol.push(res);
+                lastResult = res;
+            } else if (res === lastResult) {
+                currentCol.push(res);
+            } else {
+                bigRoad.push(currentCol);
+                currentCol = [res];
+                lastResult = res;
+            }
+        });
+        if (currentCol.length > 0) bigRoad.push(currentCol);
 
-        return Math.floor(ratio * 100);
-    },
+        // 2. 计算大眼仔路 (从大路第2列第2铺 或 第3列第1铺开始，此处简易化建模其齐整度)
+        let redCount = 0, blueCount = 0;
+        if (bigRoad.length >= 2) {
+            for (let i = 1; i < bigRoad.length; i++) {
+                const col = bigRoad[i];
+                const prevCol = bigRoad[i - 1];
+                for (let j = 0; j < col.length; j++) {
+                    // 大眼仔路规则简易拟合：比对前一列对应行是否存在或长度是否相等（齐整为红，不齐整为蓝）
+                    if (prevCol && prevCol.length >= j + 1) {
+                        redCount++; // 齐整/撞红
+                    } else {
+                        blueCount++; // 有脚/非齐整
+                    }
+                }
+            }
+        }
 
-    /**
-     * 6. 大小形态偏离度打分 (号码 0-4 为小，5-9 为大)
-     */
-    calcBSScore(numbers) {
-        const chunk = numbers.slice(0, 15);
-        const bigs = chunk.filter(n => n >= 5).length;
-        const ratio = bigs / chunk.length;
+        const totalEye = redCount + blueCount;
+        const bigEyeScore = totalEye > 0 ? Math.floor((redCount / totalEye) * 100) : 50;
 
-        return Math.floor(ratio * 100);
+        // 3. 计算庄闲旺衰差值偏离度
+        const bankers = results.filter(r => r === '庄').length;
+        const players = results.filter(r => r === '闲').length;
+        const trendBias = Math.floor((bankers / (bankers + players || 1)) * 100);
+
+        // 4. 计算跳跃度 (单跳 vs 连牌)
+        let jumps = 0;
+        for (let i = 0; i < results.length - 1; i++) {
+            if (results[i] !== results[i + 1]) jumps++;
+        }
+        const jumpRate = Math.floor((jumps / (results.length - 1 || 1)) * 100);
+
+        // 5. 查找当前最高长龙倾向
+        let currentStreak = 1;
+        const revResults = [...results].reverse();
+        for (let i = 0; i < revResults.length - 1; i++) {
+            if (revResults[i] === revResults[i + 1] && revResults[i] !== '和') currentStreak++;
+            else break;
+        }
+        const longStreak = Math.min(100, currentStreak * 15);
+
+        // 6. 对子与天生赢家离散概率估计
+        const pairProb = Math.min(45, Math.floor(10 + (jumpRate * 0.2)));
+        const naturalProb = Math.min(50, Math.floor(15 + (bigEyeScore * 0.2)));
+
+        return { trendBias, bigEyeScore, jumpRate, longStreak, pairProb, naturalProb };
     }
 };
