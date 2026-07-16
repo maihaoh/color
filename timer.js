@@ -1,119 +1,154 @@
 /**
- * AI Virtual Predictor V3 - 高精度后台同步计时模块
- * 基于系统物理时间差，彻底解决浏览器后台休眠错乱问题
+ * AI Multi-Predictor V3.5 - 双游戏独立并发时钟引擎
+ * 核心逻辑：Wingo基于物理时间秒级对齐，百家乐基于独立模拟桌台，切后台自动补帧。
  */
-class TimeManager {
-    constructor(periodDuration = 30) {
-        this.duration = periodDuration * 1000; // 转化为毫秒 (30000ms)
-        this.callback = null; // 每秒倒计时回调
-        this.openCallback = null; // 倒计时归零开奖回调
-        this.timerId = null;
-        
-        // 核心同步逻辑锚点：记录页面加载时的基准毫秒时间戳
-        this.baseTime = Math.floor(Date.now() / this.duration) * this.duration;
+class MultiTimerEngine {
+    constructor() {
+        this.activeGame = 'wingo'; // 当前前台显示的游戏
+        this.games = {
+            wingo: {
+                duration: 30000, // 30秒
+                timerId: null,
+                onTick: null,
+                onOpen: null,
+                lastPeriodId: ''
+            },
+            baccarat: {
+                duration: 40000, // 百家乐模拟一局40秒（包含发牌看牌）
+                timerId: null,
+                onTick: null,
+                onOpen: null,
+                lastPeriodId: ''
+            }
+        };
 
         this.initVisibilityListener();
     }
 
     /**
-     * 初始化时间管理器
-     * @param {Function} onTick 每秒更新UI回调，传入剩余秒数
-     * @param {Function} onOpen 倒计时结束开奖回调，传入刚刚结束的期号
+     * 注册并启动某个游戏的时钟驱动
      */
-    init(onTick, onOpen) {
-        this.callback = onTick;
-        this.openCallback = onOpen;
-        this.startLoop();
+    registerGame(gameId, onTick, onOpen) {
+        if (!this.games[gameId]) return;
+        this.games[gameId].onTick = onTick;
+        this.games[gameId].onOpen = onOpen;
+        
+        this.startClock(gameId);
     }
 
     /**
-     * 核心计时循环（每 100ms 高频检查，提供极致的丝滑倒计时效果）
+     * 切换当前前台渲染聚焦的游戏
      */
-    startLoop() {
-        if (this.timerId) clearInterval(this.timerId);
+    switchFocus(gameId) {
+        if (!this.games[gameId]) return;
+        this.activeGame = gameId;
+        // 切换时立刻触发一次当前游戏的时钟刷新
+        this.triggerImmediateTick(gameId);
+    }
 
-        const tick = () => {
+    /**
+     * 核心驱动：针对不同游戏采用不同的时间轴算法
+     */
+    startClock(gameId) {
+        const game = this.games[gameId];
+        if (game.timerId) clearInterval(game.timerId);
+
+        const run = () => {
             const now = Date.now();
-            // 计算当前这一期是从哪个绝对时间戳开始的
-            const currentPeriodStart = Math.floor(now / this.duration) * this.duration;
-            // 计算距离这一期结束还剩多少毫秒
-            const timePassed = now - currentPeriodStart;
-            const timeLeftMs = this.duration - timePassed;
-            const timeLeftSec = (timeLeftMs / 1000).toFixed(1);
+            let timeLeftSec = 0;
+            let periodId = '';
 
-            // 动态生成基于当前绝对时间的期号
-            const periodId = this.generatePeriodId(now);
-
-            // 执行每秒的 UI 渲染回调
-            if (this.callback) {
-                this.callback(timeLeftSec, periodId);
+            if (gameId === 'wingo') {
+                // Wingo 模式：Mzplay 绝对时间戳对齐算法
+                const currentPeriodStart = Math.floor(now / game.duration) * game.duration;
+                const timePassed = now - currentPeriodStart;
+                timeLeftSec = ((game.duration - timePassed) / 1000).toFixed(1);
+                periodId = this.generateWingoPeriod(now);
+            } else {
+                // 百家乐模式：DG 模拟独立桌台轮询算法
+                // 用一个固定的虚拟基准点来计算当前靴次和铺数
+                const baseBacTime = 1767225600000; // 固定的时间锚点
+                const elapsed = now - baseBacTime;
+                const roundIndex = Math.floor(elapsed / game.duration);
+                const timePassed = elapsed % game.duration;
+                timeLeftSec = ((game.duration - timePassed) / 1000).toFixed(1);
+                periodId = this.generateBaccaratPeriod(roundIndex);
             }
 
-            // 临界点判定：如果剩余毫秒极其微小，或者刚刚跨入新的一期
-            // 为了防止高频检查内多次触发开奖，使用临界判断
-            if (timeLeftMs <= 150) {
-                // 停止当前循环，等待 200ms 跨越临界期后重新开始并开奖
-                clearInterval(this.timerId);
+            // 只有当该游戏是当前前台激活的游戏时，才向渲染主界面发送 UI 更新通知
+            if (this.activeGame === gameId && game.onTick) {
+                game.onTick(timeLeftSec, periodId);
+            }
+
+            // 临界点开奖判定 (剩余时间小于 0.15 秒且未开过奖)
+            if (parseFloat(timeLeftSec) <= 0.15 && game.lastPeriodId !== periodId) {
+                game.lastPeriodId = periodId;
+                
+                // 异步延时开奖，确保跨入新一期
                 setTimeout(() => {
-                    if (this.openCallback) {
-                        this.openCallback(periodId);
-                    }
-                    this.startLoop(); // 重新拉起循环
+                    if (game.onOpen) game.onOpen(periodId);
                 }, 200);
             }
         };
 
-        // 每 100ms 轮询一次，保障切回前台时最快 0.1 秒内完成校准
-        this.timerId = setInterval(tick, 100);
-        tick(); // 立即执行一次
+        game.timerId = setInterval(run, 100);
+        run();
     }
 
     /**
-     * 智能期号生成器
-     * 格式：YYYYMMDD + 当天从 00:00:00 开始的累计期数 (4位补零)
+     * 触发即时渲染（防切换卡顿）
      */
-    generatePeriodId(timestamp) {
-        const date = new Date(timestamp);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        
-        // 计算今天 00:00:00 的绝对时间戳
-        const startOfDay = new Date(year, date.getMonth(), date.getDate()).getTime();
-        
-        // 计算从凌晨到现在过去了多少毫秒，并算出是第几期
-        const msPassed = timestamp - startOfDay;
-        const periodIndex = Math.floor(msPassed / this.duration) + 1;
-        
-        // 格式化为 4 位数的期数后缀 (如 0001, 0124)
-        const periodSuffix = String(periodIndex).padStart(4, '0');
-        
-        return `${year}${month}${day}${periodSuffix}`;
+    triggerImmediateTick(gameId) {
+        const game = this.games[gameId];
+        if (game.onTick) {
+            const now = Date.now();
+            if (gameId === 'wingo') {
+                const passed = now % 30000;
+                game.onTick(((30000 - passed) / 1000).toFixed(1), this.generateWingoPeriod(now));
+            } else {
+                const elapsed = now - 1767225600000;
+                game.onTick(((40000 - (elapsed % 40000)) / 1000).toFixed(1), this.generateBaccaratPeriod(Math.floor(elapsed / 40000)));
+            }
+        }
     }
 
     /**
-     * 监听浏览器标签页激活状态
-     * 只要用户从后台切回来，立刻强制重置循环，进行物理级时间同步
+     * Wingo 期号生成器 (年月日 + 当天累计期数)
+     */
+    generateWingoPeriod(timestamp) {
+        const date = new Date(timestamp);
+        const ymd = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+        const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+        const index = Math.floor((timestamp - startOfDay) / 30000) + 1;
+        return `${ymd}${String(index).padStart(4, '0')}`;
+    }
+
+    /**
+     * 百家乐期号生成器 (DG规则：模拟台号 + 虚拟靴号 + 铺号)
+     * 格式：DG-A01桌-第XX靴-第XX铺
+     */
+    generateBaccaratPeriod(roundIndex) {
+        const shoeSize = 60; // 每靴牌大约 60 铺
+        const shoeNum = Math.floor(roundIndex / shoeSize) % 99 + 1;
+        const roundNum = (roundIndex % shoeSize) + 1;
+        return `DG-A01-${String(shoeNum).padStart(2, '0')}靴-${String(roundNum).padStart(2, '0')}铺`;
+    }
+
+    /**
+     * 标签页切回前台事件监听
      */
     initVisibilityListener() {
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
+                // 两套时钟同时强制重新拉起，追齐时间帧
+                this.startClock('wingo');
+                this.startClock('baccarat');
                 const statusEl = document.getElementById('sync-status');
-                if (statusEl) {
-                    statusEl.innerText = "时间已与后台毫秒级同步";
-                    statusEl.style.color = "var(--neon-green)";
-                }
-                this.startLoop();
-            } else {
-                const statusEl = document.getElementById('sync-status');
-                if (statusEl) {
-                    statusEl.innerText = "系统进入后台挂起模式...";
-                    statusEl.style.color = "var(--text-muted)";
-                }
+                if (statusEl) statusEl.innerText = "多路时钟已完成毫秒级校准";
             }
         });
     }
 }
 
-// 实例化导出为全局变量，方便 app.js 调用
-window.timerManager = new TimeManager(30);
+// 注册全局单例
+window.multiTimerEngine = new MultiTimerEngine();
