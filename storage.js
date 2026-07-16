@@ -1,49 +1,50 @@
 /**
- * AI Virtual Predictor V3 - 本地数据持久化模块
- * 负责与 LocalStorage 进行安全交互
+ * AI Multi-Predictor V3.5 - 独立命名空间本地存储模块
+ * 核心逻辑：按游戏类别 (wingo / baccarat) 隔离存储历史流水与统计指标
  */
 const StorageManager = {
-    // 定义 LocalStorage 的键名
-    KEYS: {
-        HISTORY: 'vp_history_data',
-        STATS: 'vp_stats_data'
+    // 动态生成带命名空间的 Key
+    getKeys(gameId) {
+        return {
+            HISTORY: `vp_${gameId}_history_v35`,
+            STATS: `vp_${gameId}_stats_v35`
+        };
     },
 
     /**
-     * 从本地获取历史记录
-     * @returns {Array} 历史记录数组
+     * 获取指定游戏的开奖历史
      */
-    getHistory() {
+    getHistory(gameId) {
         try {
-            const data = localStorage.getItem(this.KEYS.HISTORY);
+            const keys = this.getKeys(gameId);
+            const data = localStorage.getItem(keys.HISTORY);
             return data ? JSON.parse(data) : [];
         } catch (e) {
-            console.error("读取历史记录失败:", e);
+            console.error(`[Storage] 读取 ${gameId} 历史失败:`, e);
             return [];
         }
     },
 
     /**
-     * 保存历史记录到本地
-     * @param {Array} historyList 历史记录数组
+     * 保存指定游戏的历史记录（上限 100 期）
      */
-    saveHistory(historyList) {
+    saveHistory(gameId, historyList) {
         try {
-            // 严格限制最大只保存 100 期，防止占用空间过大
+            const keys = this.getKeys(gameId);
             const limitedList = historyList.slice(0, 100);
-            localStorage.setItem(this.KEYS.HISTORY, JSON.stringify(limitedList));
+            localStorage.setItem(keys.HISTORY, JSON.stringify(limitedList));
         } catch (e) {
-            console.error("保存历史记录失败:", e);
+            console.error(`[Storage] 保存 ${gameId} 历史失败:`, e);
         }
     },
 
     /**
-     * 从本地获取统计数据（命中率、连胜等）
-     * @returns {Object} 统计对象
+     * 获取指定游戏的统计指标
      */
-    getStats() {
+    getStats(gameId) {
         try {
-            const data = localStorage.getItem(this.KEYS.STATS);
+            const keys = this.getKeys(gameId);
+            const data = localStorage.getItem(keys.STATS);
             return data ? JSON.parse(data) : {
                 totalRounds: 0,
                 winRounds: 0,
@@ -51,33 +52,33 @@ const StorageManager = {
                 maxStreak: 0
             };
         } catch (e) {
-            console.error("读取统计数据失败:", e);
+            console.error(`[Storage] 读取 ${gameId} 统计失败:`, e);
             return { totalRounds: 0, winRounds: 0, currentStreak: 0, maxStreak: 0 };
         }
     },
 
     /**
-     * 保存统计数据到本地
-     * @param {Object} statsObj 统计对象
+     * 保存指定游戏的统计指标
      */
-    saveStats(statsObj) {
+    saveStats(gameId, statsObj) {
         try {
-            localStorage.setItem(this.KEYS.STATS, JSON.stringify(statsObj));
+            const keys = this.getKeys(gameId);
+            localStorage.setItem(keys.STATS, JSON.stringify(statsObj));
         } catch (e) {
-            console.error("保存统计数据失败:", e);
+            console.error(`[Storage] 保存 ${gameId} 统计失败:`, e);
         }
     },
 
     /**
-     * 一键清空所有本地数据
+     * 清空指定游戏的数据
      */
-    clearAllData() {
+    clearGameData(gameId) {
         try {
-            localStorage.removeItem(this.KEYS.HISTORY);
-            localStorage.removeItem(this.KEYS.STATS);
+            const keys = this.getKeys(gameId);
+            localStorage.removeItem(keys.HISTORY);
+            localStorage.removeItem(keys.STATS);
             return true;
         } catch (e) {
-            console.error("清空数据失败:", e);
             return false;
         }
     }
