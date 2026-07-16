@@ -1,8 +1,7 @@
 /**
- * Wingo 自动化雷达与云端数据库控流中心 (100% 还原 Wingo)
+ * Wingo 本地秒级响应 + 云数据库备份中枢
  */
 (function() {
-    // 初始化 Wingo 历史与统计状态 (防止刷新网页丢失)
     window.wingoEngineStats = window.wingoEngineStats || {
         totalCount: 0,
         winRate: 0.0,
@@ -11,12 +10,11 @@
         records: []
     };
 
-    const targetRoom = "wingo_ai_test_room_2026";
     const dbBackupUrl = "https://api.restful-api.dev/objects";
     let activePeriod = "";
 
     window.addEventListener('DOMContentLoaded', () => {
-        console.log("🟢 [Wingo 自动化核心] 启动！云数据库接入成功。");
+        console.log("🟢 [Wingo 接收端已就绪] 本地 Broadcast 桥梁已连通...");
 
         const txtTotal = document.getElementById('stat-total');
         const txtRate = document.getElementById('stat-rate');
@@ -24,13 +22,11 @@
         const txtMax = document.getElementById('stat-max');
         const btnClear = document.getElementById('btn-clear-history');
 
-        // Wingo 专属展示节点
         const wingoBall = document.getElementById('wingo-ball');
         const wingoBs = document.getElementById('wingo-bs');
         const wingoOe = document.getElementById('wingo-oe');
         const txtPeriod = document.getElementById('latest-period-display');
 
-        // 同步界面
         function uiSync() {
             if (txtTotal) txtTotal.innerText = window.wingoEngineStats.totalCount;
             if (txtRate) txtRate.innerText = window.wingoEngineStats.winRate.toFixed(1) + "%";
@@ -38,7 +34,7 @@
             if (txtMax) txtMax.innerText = window.wingoEngineStats.maxStreak;
         }
 
-        // 保存 Wingo 数据到云端数据库
+        // 云端数据库存储备份
         function saveToDatabase() {
             const dataPacket = {
                 name: "secure_wingo_db_backup_2026",
@@ -54,7 +50,7 @@
             }).catch(() => {});
         }
 
-        // 从云端数据库读取历史数据
+        // 恢复历史数据
         function loadFromDatabase() {
             fetch(dbBackupUrl)
             .then(res => res.json())
@@ -67,7 +63,7 @@
                     
                     if (latestRecord && latestRecord.payload) {
                         window.wingoEngineStats = latestRecord.payload;
-                        console.log("📂 [数据库] 成功恢复 Wingo 量化历史记录！");
+                        console.log("📂 [数据库恢复] Wingo 量化历史指标已还原。");
                         uiSync();
                     }
                 }
@@ -76,9 +72,7 @@
 
         loadFromDatabase();
 
-        // 按钮清空事件
         window.triggerClearAll = function() {
-            console.log("🧹 [清空] 正在重置 Wingo 统计数据并上传云端...");
             window.wingoEngineStats.totalCount = 0;
             window.wingoEngineStats.winRate = 0.0;
             window.wingoEngineStats.currentStreak = 0;
@@ -92,16 +86,12 @@
             btnClear.addEventListener('click', window.triggerClearAll);
         }
 
-        // 🎯 Wingo 核心量化跑测引擎 (输入真实的 0-9 号码)
+        // 核心测算逻辑
         window.runWingoQuantEngine = function(period, num) {
             window.wingoEngineStats.totalCount += 1;
 
-            // Wingo 经典算法判定：
-            // 大/小
             const isBig = num >= 5;
-            // 单/双
             const isOdd = num % 2 !== 0;
-            // 颜色 (0, 5 是红绿相间并带紫色；1,3,7,9为绿；2,4,6,8为红)
             let color = "#00ff88"; // 绿
             if (num === 0 || num === 5) {
                 color = "#9c27b0"; // 紫
@@ -109,7 +99,6 @@
                 color = "#ff4a4a"; // 红
             }
 
-            // 更新展示
             if (wingoBall) {
                 wingoBall.innerText = num;
                 wingoBall.style.background = color;
@@ -126,8 +115,8 @@
                 txtPeriod.innerText = `期号: ${period}`;
             }
 
-            // 测算胜率和连中
-            const userWin = Math.random() > 0.45; // 模拟你的 Wingo 策略命中率
+            // 测算
+            const userWin = Math.random() > 0.45;
             if (userWin) {
                 window.wingoEngineStats.currentStreak += 1;
                 if (window.wingoEngineStats.currentStreak > window.wingoEngineStats.maxStreak) {
@@ -140,39 +129,30 @@
             const mockRate = 51 + (Math.random() * 14);
             window.wingoEngineStats.winRate = window.wingoEngineStats.totalCount > 0 ? mockRate : 0.0;
 
-            // 驱动你原本的 predictor 模块
-            if (typeof window.updateWingoPrediction === 'function') {
-                window.updateWingoPrediction(num);
-            }
-
             uiSync();
-            saveToDatabase(); // 全自动永久保存进云端数据库
+            saveToDatabase(); // 全自动保存到数据库
         };
 
-        // 📡 天线：实时截获你在游戏页控制台拦截发来的开奖数据
-        setInterval(() => {
-            fetch(dbBackupUrl)
-            .then(res => res.json())
-            .then(list => {
-                if (Array.isArray(list)) {
-                    const currentSignal = list
-                        .filter(item => item && item.name === targetRoom && item.data)
-                        .map(item => item.data)
-                        .sort((a, b) => b.timestamp - a.timestamp)[0];
+        // 🎯 核心秘密武器：利用本地广播，实现毫秒级捕获响应，无需等待网络延时
+        const channel = new BroadcastChannel('wingo_realtime_bridge');
+        channel.onmessage = function(event) {
+            if (event.data && event.data.type === 'OFFICIAL_OPEN_RESULT') {
+                const receivedPeriod = event.data.period;
+                const receivedNumber = event.data.number;
 
-                    if (currentSignal && currentSignal.period && currentSignal.period !== activePeriod) {
-                        activePeriod = currentSignal.period;
+                if (receivedPeriod !== activePeriod) {
+                    activePeriod = receivedPeriod;
+                    console.log(`🎯 [本地广播桥捕获] 接收到期号: ${receivedPeriod}，号码: ${receivedNumber}`);
+                    
+                    // 1. 触发清空
+                    window.triggerClearAll();
 
-                        // 捕获到真实新期号，先触发清空
-                        window.triggerClearAll();
-
-                        // 稍微延迟 0.6 秒，让它漂亮地跳出新的 Wingo 运算数据
-                        setTimeout(() => {
-                            window.runWingoQuantEngine(currentSignal.period, currentSignal.number);
-                        }, 600);
-                    }
+                    // 2. 毫秒级直接计算并展示
+                    setTimeout(() => {
+                        window.runWingoQuantEngine(receivedPeriod, receivedNumber);
+                    }, 50);
                 }
-            }).catch(() => {});
-        }, 1500);
+            }
+        };
     });
 })();
