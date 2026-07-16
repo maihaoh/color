@@ -3,374 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Multi-Predictor V3.5 双模组量化系统</title>
-    <!-- 引入 Chart.js 图表库 -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Wingo 量化分析总控 HUB</title>
     <style>
-        :root {
-            --bg-main: #0b0e11;
-            --bg-card: #14161c;
-            --bg-input: #1e222a;
-            --border-color: #2b3139;
-            --text-main: #eaecef;
-            --text-muted: #707a8a;
-            --color-wingo: #f0b90b;
-            --color-bac: #0052d9;
-        }
-
         body {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0;
-            padding: 0;
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
             display: flex;
-            height: 100vh;
-            overflow: hidden;
+            gap: 20px;
         }
-
-        /* 侧边栏样式 */
-        .sidebar {
-            width: 240px;
-            background-color: var(--bg-card);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            padding: 20px 10px;
-            box-sizing: border-box;
-        }
-
-        .sidebar h2 {
-            font-size: 18px;
-            margin-bottom: 30px;
-            text-align: center;
-            color: var(--color-wingo);
-            letter-spacing: 1px;
-        }
-
-        .cat-btn {
-            background: transparent;
-            border: 1px solid transparent;
-            color: var(--text-muted);
-            padding: 15px 20px;
-            text-align: left;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
+        .card {
+            background-color: #262626;
             border-radius: 8px;
-            margin-bottom: 12px;
-            transition: all 0.2s ease;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .cat-btn small {
-            font-size: 11px;
-            font-weight: normal;
-            margin-top: 4px;
-            opacity: 0.6;
-        }
-
-        .cat-btn:hover {
-            background-color: var(--bg-input);
-            color: var(--text-main);
-        }
-
-        .cat-btn.active#cat-wingo {
-            background-color: rgba(240, 185, 11, 0.15);
-            border-color: var(--color-wingo);
-            color: var(--color-wingo);
-        }
-
-        .cat-btn.active#cat-baccarat {
-            background-color: rgba(0, 82, 219, 0.15);
-            border-color: var(--color-bac);
-            color: #409eff;
-        }
-
-        /* 主内容区样式 */
-        .main-content {
+            padding: 20px;
+            border: 1px solid #333;
             flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            box-sizing: border-box;
         }
-
-        /* 顶部看板 */
-        .top-navbar {
-            background-color: var(--bg-card);
-            border-bottom: 1px solid var(--border-color);
-            padding: 15px 25px;
+        .metric-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-
-        .timer-box {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        #countdown {
-            font-size: 24px;
-            font-family: monospace;
-            font-weight: bold;
-            color: #f6465d;
-            background: rgba(246, 70, 93, 0.1);
-            padding: 2px 10px;
-            border-radius: 4px;
-        }
-
-        /* 控制面板显隐 */
-        .game-panel {
-            display: none;
-            padding: 25px;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .game-panel.active-panel {
-            display: flex;
-        }
-
-        /* AI 预测推荐大卡片 */
-        .pred-card {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 20px;
-            align-items: center;
-        }
-
-        .pred-item {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .pred-label {
-            font-size: 13px;
-            color: var(--text-muted);
-        }
-
-        .pred-result {
-            font-size: 20px;
-            font-weight: bold;
-        }
-
-        /* 颜色标签 */
-        .bg-red { color: #f6465d; }
-        .bg-green { color: #0ecb81; }
-        .bg-purple { color: #9c27b0; }
-        .txt-banker { color: #f6465d; }
-        .txt-player { color: #409eff; }
-        .txt-tie { color: #0ecb81; }
-        .txt-big { color: #ff9800; }
-        .txt-small { color: #03a9f4; }
-
-        /* 中部混合布局：左统计，右图表/矩阵 */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 300px 1fr;
-            gap: 20px;
-        }
-
-        .data-box {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-        }
-
-        .data-box h3 {
-            margin-top: 0;
             margin-bottom: 15px;
-            font-size: 15px;
-            border-bottom: 1px solid var(--border-color);
             padding-bottom: 10px;
+            border-bottom: 1px solid #333;
         }
-
-        .stats-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px dotted var(--border-color);
+        .metric-label {
+            color: #aaa;
+            font-size: 15px;
         }
-
-        .matrix-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-        }
-
-        .matrix-item {
-            background-color: var(--bg-input);
-            padding: 12px;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .matrix-item .score {
+        .metric-value {
             font-size: 18px;
-            font-family: monospace;
             font-weight: bold;
-            color: #0ecb81;
         }
-
-        .chart-container {
-            height: 160px;
-            position: relative;
-        }
-
-        /* 下部历史表格 */
-        .table-box {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            margin: 0 25px 25px 25px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }
-
-        th, td {
-            padding: 12px 15px;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 14px;
-        }
-
-        th {
-            color: var(--text-muted);
-            font-weight: normal;
-        }
-
-        td.win { color: #0ecb81; font-weight: bold; }
-        td.lose { color: #666; }
-
+        .highlight-green { color: #00ff88; }
+        .highlight-red { color: #ff4a4a; }
+        .highlight-orange { color: #ffaa00; }
+        
         .btn-clear {
-            background-color: rgba(246, 70, 93, 0.1);
-            border: 1px solid #f6465d;
-            color: #f6465d;
-            padding: 8px 15px;
+            width: 100%;
+            background-color: transparent;
+            color: #ff4a4a;
+            border: 1px solid #ff4a4a;
+            padding: 12px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
-            margin-top: 15px;
-            width: 100%;
+            transition: all 0.2s;
+            margin-top: 10px;
         }
         .btn-clear:hover {
-            background-color: #f6465d;
-            color: #fff;
+            background-color: rgba(255, 74, 74, 0.1);
+        }
+        .sub-text {
+            color: #666;
+            font-size: 12px;
+            text-align: center;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
 
-    <!-- 左侧分类切换边栏 -->
-    <div class="sidebar">
-        <h2>AI QUANT HUB</h2>
-        <button class="cat-btn active" id="cat-wingo" onclick="window.changeGame('wingo')">
-            <span>⚡ Wingo 30S</span>
-            <small>Mzplay 概率混算</small>
-        </button>
-        <button class="cat-btn" id="cat-baccarat" onclick="window.changeGame('baccarat')">
-            <span>🃏 百家乐模拟</span>
-            <small>DG Casino 大眼仔路单</small>
-        </button>
-    </div>
-
-    <!-- 右侧主内容展示区 -->
-    <div class="main-content">
-        <!-- 顶部公共计时看板 -->
-        <div class="top-navbar">
-            <div class="timer-box">
-                <span id="timer-title" style="font-weight: bold;">Wingo 30S 下期倒计时</span>
-                <span id="countdown">0.0s</span>
+    <div class="container">
+        <!-- [Wingo] 实时胜率指标卡片 -->
+        <div class="card">
+            <h3 style="margin-top:0; border-bottom:2px solid #333; padding-bottom:10px;">[Wingo] 实时胜率指标</h3>
+            
+            <div class="metric-row">
+                <span class="metric-label">已统计局数：</span>
+                <span id="stat-total" class="metric-value">0</span>
             </div>
-            <div>
-                当前锁定：<span id="current-period" style="font-family: monospace; font-weight: bold; color: #f0b90b;">-</span>
+            
+            <div class="metric-row">
+                <span class="metric-label">量化分析胜率：</span>
+                <span id="stat-rate" class="metric-value highlight-green">0.0%</span>
             </div>
-        </div>
-
-        <!-- 联动核心面板区 -->
-        <div style="padding: 25px 25px 0 25px;">
-            <div class="dashboard-grid">
-                <!-- 左侧量化统计 -->
-                <div class="data-box">
-                    <h3>[<span id="stats-game-name">Wingo</span>] 实时胜率指标</h3>
-                    <div class="stats-row"><span>已统计局数</span><span id="total-rounds" style="font-weight: bold;">0</span></div>
-                    <div class="stats-row"><span>量化分析胜率</span><span id="win-rate" style="color: #0ecb81; font-weight: bold;">0.0%</span></div>
-                    <div class="stats-row"><span>当前连中</span><span id="current-streak" style="color: #f6465d;">0</span></div>
-                    <div class="stats-row"><span>最高连中连击</span><span id="max-streak" style="color: #f0b90b;">0</span></div>
-                    <button class="btn-clear" id="btn-clear-data">清空当前分类历史数据</button>
-                    <div id="sync-status" style="font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 10px;">智能并发内核运行中</div>
+            
+            <div class="metric-row">
+                <span class="metric-label">当前连中：</span>
+                <span id="stat-current" class="metric-value highlight-red">0</span>
+            </div>
+            
+            <div class="metric-row">
+                <span class="metric-label">最高连中：</span>
+                <span id="stat-max" class="metric-value highlight-orange">0</span>
+            </div>
+            
+            <!-- 触发清空历史的核心红色按钮 -->
+            <button id="btn-clear-history" class="btn-clear">清空当前分类历史数据</button>
+            
+            <!-- 🌟 新增：近期开出号码的核心动态展示区 -->
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #444;">
+                <div style="font-size: 13px; color: #888; margin-bottom: 8px; text-align: center;">近期开出号码</div>
+                <div id="latest-result-display" style="font-size: 32px; font-weight: bold; color: #ffaa00; text-align: center; letter-spacing: 2px; text-shadow: 0 0 10px rgba(255,170,0,0.3);">
+                    等待数据...
                 </div>
-
-                <!-- 右侧动态切换的 AI 面板 -->
-                <div>
-                    <!-- WINGO 专属面板 -->
-                    <div class="game-panel active-panel" id="panel-wingo">
-                        <div class="pred-card">
-                            <div class="pred-item"><span class="pred-label">AI 信心指数</span><span class="pred-result" id="wingo-conf" style="color: #f0b90b;">0%</span></div>
-                            <div class="pred-item"><span class="pred-label">单双前瞻</span><span class="pred-result" id="wp-num">-</span></div>
-                            <div class="pred-item"><span class="pred-label">大小推荐</span><span class="pred-result" id="wp-size">-</span></div>
-                            <div class="pred-item"><span class="pred-label">波色形态</span><span class="pred-result" id="wp-color">-</span></div>
-                        </div>
-                        <div class="data-box" style="margin-top: 15px;">
-                            <h3>Wingo 多维概率特征矩阵</h3>
-                            <div class="matrix-grid" id="wingo-matrix"></div>
-                        </div>
-                        <div class="data-box" style="margin-top: 15px;">
-                            <h3>近期开奖号码起伏曲线</h3>
-                            <div class="chart-container"><canvas id="trendChartWingo"></canvas></div>
-                        </div>
-                    </div>
-
-                    <!-- 百家乐 专属面板 -->
-                    <div class="game-panel" id="panel-baccarat">
-                        <div class="pred-card" style="border-color: var(--color-bac);">
-                            <div class="pred-item"><span class="pred-label">大眼仔对冲信心</span><span class="pred-result" id="bac-conf" style="color: #409eff;">0%</span></div>
-                            <div class="pred-item" id="bp-side"><span class="pred-label">破路博弈落子</span><span class="pred-result">-</span></div>
-                            <div class="pred-item"><span class="pred-label">对子爆发率</span><span class="pred-result" id="bp-pair" style="color: #ff9800;">0%</span></div>
-                            <div class="pred-item"><span class="pred-label">天生赢家率</span><span class="pred-result" id="bp-natural" style="color: #0ecb81;">0%</span></div>
-                        </div>
-                        <div class="data-box" style="margin-top: 15px;">
-                            <h3>百家乐大路与大眼仔模拟指标</h3>
-                            <div class="matrix-grid" id="bac-matrix"></div>
-                        </div>
-                        <div class="data-box" style="margin-top: 15px;">
-                            <h3>庄闲净差值走向旺衰图</h3>
-                            <div class="chart-container"><canvas id="trendChartBac"></canvas></div>
-                        </div>
-                    </div>
+                <div id="latest-period-display" style="font-size: 11px; color: #555; text-align: center; margin-top: 5px;">
+                    期号: --
                 </div>
             </div>
+
+            <div class="sub-text">智能并发内核运行中</div>
         </div>
 
-        <!-- 历史流水面板 -->
-        <div class="table-box">
-            <h3 style="margin-top:0; margin-bottom:15px; font-size:15px;">量子数据推演历史流水账单</h3>
-            <div style="max-height: 250px; overflow-y: auto;">
-                <table>
-                    <thead id="history-thead"></thead>
-                    <tbody id="history-tbody"></tbody>
-                </table>
-            </div>
+        <!-- 右侧 AI 预测占位卡片 -->
+        <div class="card" style="flex: 1.2;">
+            <h3 style="margin-top:0; border-bottom:2px solid #333; padding-bottom:10px;">AI 信心指数</h3>
+            <div style="font-size: 36px; font-weight: bold; color: #ffaa00; margin-bottom: 20px;">0%</div>
+            
+            <p style="color:#888;">单双前瞻：<span style="color:#fff;">-</span></p>
+            <p style="color:#888;">大小推荐：<span style="color:#fff;">-</span></p>
+            <p style="color:#888;">波色形态：<span style="color:#fff;">-</span></p>
         </div>
     </div>
 
-    <!-- 💥 引入核心全功能单文件 JS -->
-    <script src="app.js"></script>
+    <!-- 引入自动化测试控制中心脚本 -->
+    <script src="auto-test.js"></script>
 </body>
 </html>
