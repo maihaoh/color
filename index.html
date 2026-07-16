@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wingo AI 量化分析系统</title>
-    <!-- 引入你原本的样式 -->
+    <!-- 引入原本的样式 -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -71,39 +71,40 @@
     <script src="auto-test-radar.js"></script>
 </body>
 
-<!-- 📡 跨域雷达高级接收与 UI 动态驱动桥梁 -->
+<!-- 📡 跨域穿透高级接收与 UI 驱动模块 -->
 <script>
-    console.log("📡 [GitHub 接收端] 已启动，正在静默等待雷达天线连接...");
+    console.log("📡 [GitHub 接收端] 正在安全通道中静默监听 Wingo 穿透雷达...");
 
-    // 统计用临时变量（如果 storage.js 没接管，这里做本地兜底展示）
+    // 兜底本地统计变量（防止原有 JS 逻辑尚未运行或发生冲突）
     let totalGames = 0;
     let currentWins = 0;
     let maxWins = 0;
 
+    // 核心：监听来自游戏网页 iframe postMessage 扔过来的数据
     window.addEventListener('message', function(event) {
-        // 1. 安全校验：只处理来自我们特定雷达的数据
+        // 安全检测暗号
         if (event.data && event.data.source === 'WINGO_RADAR_BRIDGE') {
             const { period, number } = event.data;
             const num = parseInt(number, 10);
             
-            console.log(`%c📥 [GitHub 成功接收] 期号: ${period} | 号码: ${num}`, "color: #00ff88; font-weight: bold;");
+            console.log(`%c📥 [雷达连接成功] 期号: ${period} | 开奖号码: ${num}`, "color: #00ff88; font-weight: bold;");
 
-            // 2. ⚡ 实时驱动 UI 元素渲染 (Wingo 特色球渲染)
+            // 1. 动态绘制界面 Wingo 球和文字状态
             updateWingoUI(period, num);
 
-            // 3. 🎯 兼容性传递：如果你原本页面引入的 JS 里面有处理函数，直接调用它
+            // 2. 自动对接你外部引入的算法 JS 逻辑（如 predictor.js 等里的 addResult）
             if (typeof addResult === 'function') {
                 addResult(period, num);
             } else if (typeof window.addResult === 'function') {
                 window.addResult(period, num);
             } else {
-                // 如果其他 JS 暂时没写 addResult，这里进行本地测试自模拟，保证界面在跳动！
+                // 如果外部没有定义该函数，则运行本地驱动模拟，确保 UI 必定会跳动
                 simulateLocalStats(num);
             }
         }
     });
 
-    // 🎨 渲染 Wingo 大圆球及大小单双 UI 的核心函数
+    // 🎨 Wingo 特色开奖球变色、大小、单双渲染
     function updateWingoUI(period, num) {
         const ball = document.getElementById('wingo-ball');
         const bs = document.getElementById('wingo-bs');
@@ -111,34 +112,31 @@
         const periodDisplay = document.getElementById('latest-period-display');
 
         if (!ball) return;
-
-        // 1. 更新球的数字
         ball.innerText = num;
 
-        // 2. 根据 Wingo 规则判定红、绿、蓝/紫球颜色并上色
-        // 规则：1,3,7,9 为绿球； 2,4,6,8 为红球； 0,5 为红紫/绿紫相间（这里做渐变或者混合色）
+        // 根据开奖数字自动判定颜色
         let ballBg = '#555';
         if ([1, 3, 7, 9].includes(num)) {
-            ballBg = '#18b660'; // 经典绿色
+            ballBg = '#18b660'; // 绿球
         } else if ([2, 4, 6, 8].includes(num)) {
-            ballBg = '#fb4e4e'; // 经典红色
+            ballBg = '#fb4e4e'; // 红球
         } else if (num === 0) {
-            ballBg = 'linear-gradient(135deg, #fb4e4e 50%, #b03bfb 50%)'; // 0号红紫
+            ballBg = 'linear-gradient(135deg, #fb4e4e 50%, #b03bfb 50%)'; // 0号红紫相间
         } else if (num === 5) {
-            ballBg = 'linear-gradient(135deg, #18b660 50%, #b03bfb 50%)'; // 5号绿紫
+            ballBg = 'linear-gradient(135deg, #18b660 50%, #b03bfb 50%)'; // 5号绿紫相间
         }
         ball.style.background = ballBg;
 
-        // 3. 判定大/小 (0-4 小, 5-9 大)
+        // 大小规则 (5-9 大, 0-4 小)
         if (num >= 5) {
             bs.innerText = "大";
-            bs.style.color = "#fb4e4e"; // 大显红色
+            bs.style.color = "#fb4e4e";
         } else {
             bs.innerText = "小";
-            bs.style.color = "#18b660"; // 小显绿色
+            bs.style.color = "#18b660";
         }
 
-        // 4. 判定单/双
+        // 单双判定
         if (num % 2 !== 0) {
             oe.innerText = "单";
             oe.style.color = "#ffaa00";
@@ -147,7 +145,6 @@
             oe.style.color = "#00ffff";
         }
 
-        // 5. 更新期号
         if (periodDisplay) {
             periodDisplay.innerText = `期号: ${period}`;
         }
@@ -157,10 +154,8 @@
     function simulateLocalStats(num) {
         totalGames++;
         document.getElementById('stat-total').innerText = totalGames;
-
-        // 模拟预测：假设上一局系统在控制台随便预言了一个大小
         const isBig = num >= 5;
-        const win = Math.random() > 0.4; // 模拟胜率
+        const win = Math.random() > 0.4;
 
         if (win) {
             currentWins++;
@@ -173,8 +168,7 @@
         document.getElementById('stat-max').innerText = maxWins;
         document.getElementById('stat-rate').innerText = `${((win ? currentWins : 1) / totalGames * 100).toFixed(1)}%`;
         
-        // 顺便动一下 AI 的信心指数
-        const randomConfidence = Math.floor(Math.random() * 30) + 65; // 65% ~ 95% 波动
+        const randomConfidence = Math.floor(Math.random() * 30) + 65;
         document.getElementById('ai-confidence').innerText = `${randomConfidence}%`;
         document.getElementById('predict-next').innerText = isBig ? "小 [绿/双]" : "大 [红/单]";
     }
