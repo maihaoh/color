@@ -3,127 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wingo 量化分析总控 HUB</title>
-    <style>
-        body {
-            background-color: #1a1a1a;
-            color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            gap: 20px;
-        }
-        .card {
-            background-color: #262626;
-            border-radius: 8px;
-            padding: 20px;
-            border: 1px solid #333;
-            flex: 1;
-        }
-        .metric-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #333;
-        }
-        .metric-label {
-            color: #aaa;
-            font-size: 15px;
-        }
-        .metric-value {
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .highlight-green { color: #00ff88; }
-        .highlight-red { color: #ff4a4a; }
-        .highlight-orange { color: #ffaa00; }
-        
-        .btn-clear {
-            width: 100%;
-            background-color: transparent;
-            color: #ff4a4a;
-            border: 1px solid #ff4a4a;
-            padding: 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.2s;
-            margin-top: 10px;
-        }
-        .btn-clear:hover {
-            background-color: rgba(255, 74, 74, 0.1);
-        }
-        .sub-text {
-            color: #666;
-            font-size: 12px;
-            text-align: center;
-            margin-top: 10px;
-        }
-    </style>
+    <title>Wingo AI 量化分析系统</title>
+    <!-- 引入你原本的样式 -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="container">
-        <!-- [Wingo] 实时胜率指标卡片 -->
-        <div class="card">
-            <h3 style="margin-top:0; border-bottom:2px solid #333; padding-bottom:10px;">[Wingo] 实时胜率指标</h3>
+    <div class="container" style="max-width: 1200px; margin: 20px auto; display: flex; gap: 20px; padding: 0 20px;">
+        <!-- Wingo 核心指标卡片 -->
+        <div class="card" style="flex: 1; background: #262626; padding: 20px; border-radius: 8px; border: 1px solid #333; color: #fff;">
+            <h3 style="margin-top:0; border-bottom:2px solid #333; padding-bottom:10px; color: #00ff88;">[Wingo] 实时胜率指标</h3>
             
-            <div class="metric-row">
-                <span class="metric-label">已统计局数：</span>
-                <span id="stat-total" class="metric-value">0</span>
+            <div class="metric-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 8px;">
+                <span>已统计局数：</span>
+                <span id="stat-total" style="font-weight: bold;">0</span>
             </div>
             
-            <div class="metric-row">
-                <span class="metric-label">量化分析胜率：</span>
-                <span id="stat-rate" class="metric-value highlight-green">0.0%</span>
+            <div class="metric-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 8px;">
+                <span>量化分析胜率：</span>
+                <span id="stat-rate" style="color: #00ff88; font-weight: bold;">0.0%</span>
             </div>
             
-            <div class="metric-row">
-                <span class="metric-label">当前连中：</span>
-                <span id="stat-current" class="metric-value highlight-red">0</span>
+            <div class="metric-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 8px;">
+                <span>当前连中：</span>
+                <span id="stat-current" style="color: #ff4a4a; font-weight: bold;">0</span>
             </div>
             
-            <div class="metric-row">
-                <span class="metric-label">最高连中：</span>
-                <span id="stat-max" class="metric-value highlight-orange">0</span>
+            <div class="metric-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 8px;">
+                <span>最高连中：</span>
+                <span id="stat-max" style="color: #ffaa00; font-weight: bold;">0</span>
             </div>
             
-            <!-- 触发清空历史的核心红色按钮 -->
-            <button id="btn-clear-history" class="btn-clear">清空当前分类历史数据</button>
+            <!-- 原有清空历史按钮 -->
+            <button id="btn-clear-history" style="width: 100%; background: transparent; color: #ff4a4a; border: 1px solid #ff4a4a; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px;">
+                清空当前分类历史数据
+            </button>
             
-            <!-- 🌟 新增：近期开出号码的核心动态展示区 -->
-            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #444;">
-                <div style="font-size: 13px; color: #888; margin-bottom: 8px; text-align: center;">近期开出号码</div>
-                <div id="latest-result-display" style="font-size: 32px; font-weight: bold; color: #ffaa00; text-align: center; letter-spacing: 2px; text-shadow: 0 0 10px rgba(255,170,0,0.3);">
-                    等待数据...
+            <!-- 🌟 针对 Wingo 优化：近期开出号码与红绿大小展示 -->
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #444; text-align: center;">
+                <div style="font-size: 12px; color: #888; margin-bottom: 8px;">Wingo 实时最新开奖</div>
+                
+                <!-- 大圆球显示数字与颜色 -->
+                <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span id="wingo-ball" style="display: inline-block; width: 45px; height: 45px; line-height: 45px; border-radius: 50%; font-size: 24px; font-weight: bold; color: #fff; background: #555; text-shadow: 1px 1px 2px #000;">-</span>
+                    <span id="wingo-bs" style="font-size: 18px; font-weight: bold; color: #aaa;">--</span>
+                    <span id="wingo-oe" style="font-size: 18px; font-weight: bold; color: #aaa;">--</span>
                 </div>
-                <div id="latest-period-display" style="font-size: 11px; color: #555; text-align: center; margin-top: 5px;">
-                    期号: --
-                </div>
+                
+                <div id="latest-period-display" style="font-size: 11px; color: #666;">期号: --</div>
             </div>
-
-            <div class="sub-text">智能并发内核运行中</div>
         </div>
 
-        <!-- 右侧 AI 预测占位卡片 -->
-        <div class="card" style="flex: 1.2;">
-            <h3 style="margin-top:0; border-bottom:2px solid #333; padding-bottom:10px;">AI 信心指数</h3>
-            <div style="font-size: 36px; font-weight: bold; color: #ffaa00; margin-bottom: 20px;">0%</div>
-            
-            <p style="color:#888;">单双前瞻：<span style="color:#fff;">-</span></p>
-            <p style="color:#888;">大小推荐：<span style="color:#fff;">-</span></p>
-            <p style="color:#888;">波色形态：<span style="color:#fff;">-</span></p>
+        <!-- 右侧 Wingo AI 预测 -->
+        <div class="card" style="flex: 1.2; background: #262626; padding: 20px; border-radius: 8px; border: 1px solid #333; color: #fff;">
+            <h3 style="margin-top:0; border-bottom:2px solid #333; padding-bottom:10px; color: #ffaa00;">AI Wingo 信心指标</h3>
+            <div id="ai-confidence" style="font-size: 36px; font-weight: bold; color: #ffaa00; margin-bottom: 15px;">0%</div>
+            <p>下局AI预测推荐：<span id="predict-next" style="font-weight: bold; color: #00ff88;">-</span></p>
+            <p>云端数据库同步：<span id="db-status" style="color: #00ff88;">已安全挂载云数据库</span></p>
         </div>
     </div>
 
-    <!-- 引入自动化测试控制中心脚本 -->
-    <script src="auto-test.js"></script>
+    <!-- 保持你原本的逻辑链 -->
+    <script src="storage.js"></script>
+    <script src="strategy.js"></script>
+    <script src="predictor.js"></script>
+    <script src="chart.js"></script>
+    <script src="auto-test-radar.js"></script>
 </body>
 </html>
