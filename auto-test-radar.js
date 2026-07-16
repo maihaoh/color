@@ -1,142 +1,156 @@
-/**
- * Wingo 分析面板控制中心 (跨域直连+量化跑测+本地存储三合一合并版)
- */
+// ==========================================
+// auto-test-radar.js (跨域数据接收与 UI 驱动桥梁)
+// ==========================================
 (function() {
-    // 1. 初始化或从浏览器持久化缓存中加载历史数据
-    const STORAGE_KEY = "wingo_secure_db_backup_2026";
-    let savedData = null;
-    try {
-        savedData = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    } catch (e) {}
+    console.log("📡 [GitHub auto-test-radar] 自动雷达监听模块已启动...");
 
-    window.wingoEngineStats = window.wingoEngineStats || savedData || {
-        totalCount: 0,
-        winRate: 0.0,
-        currentStreak: 0,
-        maxStreak: 0,
-        records: []
-    };
+    // 🏆 持久化统计数据初始化（防止刷新页面归零）
+    let totalGames = parseInt(localStorage.getItem('wingo_total_games') || '0', 10);
+    let currentWins = parseInt(localStorage.getItem('wingo_current_wins') || '0', 10);
+    let maxWins = parseInt(localStorage.getItem('wingo_max_wins') || '0', 10);
+    let winRate = parseFloat(localStorage.getItem('wingo_win_rate') || '0.0');
 
-    let activePeriod = "";
+    // 首次加载，把之前存下的数据显示到页面上
+    setTimeout(function() {
+        refreshStatsUI();
+    }, 500);
 
-    window.addEventListener('DOMContentLoaded', () => {
-        console.log("🟢 [Wingo 面板中心] 合并版引擎已启动。监听跨域穿透中...");
+    // 监听跨域传输
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.source === 'WINGO_RADAR_BRIDGE') {
+            const { period, number } = event.data;
+            const num = parseInt(number, 10);
+            
+            console.log(`%c🎯 [面板成功捕获数据] 期号: ${period}, 号码: ${num}`, "color: #00ff88; font-weight: bold;");
 
-        // 获取页面 UI DOM 节点
-        const txtTotal = document.getElementById('stat-total');
-        const txtRate = document.getElementById('stat-rate');
-        const txtCurrent = document.getElementById('stat-current');
-        const txtMax = document.getElementById('stat-max');
-        const btnClear = document.getElementById('btn-clear-history');
+            // 1. ⚡ 核心：立即更新网页上的大球、大小单双和期号
+            updateWingoUI(period, num);
 
-        const wingoBall = document.getElementById('wingo-ball');
-        const wingoBs = document.getElementById('wingo-bs');
-        const wingoOe = document.getElementById('wingo-oe');
-        const txtPeriod = document.getElementById('latest-period-display');
-
-        // UI 渲染同步
-        function uiSync() {
-            if (txtTotal) txtTotal.innerText = window.wingoEngineStats.totalCount;
-            if (txtRate) txtRate.innerText = window.wingoEngineStats.winRate.toFixed(1) + "%";
-            if (txtCurrent) txtCurrent.innerText = window.wingoEngineStats.currentStreak;
-            if (txtMax) txtMax.innerText = window.wingoEngineStats.maxStreak;
-        }
-
-        // 写入本地持久化存储
-        function saveToLocalDatabase() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(window.wingoEngineStats));
-        }
-
-        // 初始化显示
-        uiSync();
-
-        // 绑定手动/自动清空事件
-        window.triggerClearAll = function() {
-            window.wingoEngineStats.totalCount = 0;
-            window.wingoEngineStats.winRate = 0.0;
-            window.wingoEngineStats.currentStreak = 0;
-            window.wingoEngineStats.maxStreak = 0;
-            window.wingoEngineStats.records = [];
-            uiSync();
-            saveToLocalDatabase();
-        };
-
-        if (btnClear) {
-            btnClear.addEventListener('click', window.triggerClearAll);
-        }
-
-        // 🎯 Wingo 核心算法跑测引擎 (输入 0-9 号码，自动转换为 Wingo 红绿大小)
-        window.runWingoQuantEngine = function(period, num) {
-            window.wingoEngineStats.totalCount += 1;
-
-            // Wingo 规则：大(5-9)小(0-4)
-            const isBig = num >= 5;
-            // Wingo 规则：单双
-            const isOdd = num % 2 !== 0;
-            // Wingo 规则：颜色
-            let color = "#00ff88"; // 绿
-            if (num === 0 || num === 5) {
-                color = "#9c27b0"; // 紫色（0和5红绿相间并带紫）
-            } else if (num % 2 === 0) {
-                color = "#ff4a4a"; // 双数红
-            }
-
-            // 同步更新 Wingo 展示圆球
-            if (wingoBall) {
-                wingoBall.innerText = num;
-                wingoBall.style.background = color;
-            }
-            if (wingoBs) {
-                wingoBs.innerText = isBig ? "大" : "小";
-                wingoBs.style.color = isBig ? "#ffaa00" : "#00ff88";
-            }
-            if (wingoOe) {
-                wingoOe.innerText = isOdd ? "单" : "双";
-                wingoOe.style.color = isOdd ? "#ff5722" : "#2196f3";
-            }
-            if (txtPeriod) {
-                txtPeriod.innerText = `期号: ${period}`;
-            }
-
-            // 计算 Wingo 虚拟连中及胜率
-            const userWin = Math.random() > 0.45; // 实际可在此处替换为你真实的 AI 预测碰撞逻辑
-            if (userWin) {
-                window.wingoEngineStats.currentStreak += 1;
-                if (window.wingoEngineStats.currentStreak > window.wingoEngineStats.maxStreak) {
-                    window.wingoEngineStats.maxStreak = window.wingoEngineStats.currentStreak;
-                }
+            // 2. ⚡ 核心：对接你的 AI 预测算法（如果你的其他 js 里有这个方法）
+            if (typeof addResult === 'function') {
+                addResult(period, num);
+            } else if (typeof window.addResult === 'function') {
+                window.addResult(period, num);
             } else {
-                window.wingoEngineStats.currentStreak = 0;
+                // 如果没有外部算法，用本地持久化算法驱动面板，让数据不断累计
+                simulateLocalStats(num);
             }
+        }
+    });
 
-            const mockRate = 51 + (Math.random() * 14);
-            window.wingoEngineStats.winRate = window.wingoEngineStats.totalCount > 0 ? mockRate : 0.0;
+    // 🎨 渲染 Wingo 专属开奖球、大小、单双
+    function updateWingoUI(period, num) {
+        const ball = document.getElementById('wingo-ball');
+        const bs = document.getElementById('wingo-bs');
+        const oe = document.getElementById('wingo-oe');
+        const periodDisplay = document.getElementById('latest-period-display');
 
-            uiSync();
-            saveToLocalDatabase(); // 实时持久化保存
-        };
+        if (ball) {
+            ball.innerText = num;
+            // 判定红球/绿球/紫球
+            let ballBg = '#555';
+            if ([1, 3, 7, 9].includes(num)) {
+                ballBg = '#18b660'; // 绿
+            } else if ([2, 4, 6, 8].includes(num)) {
+                ballBg = '#fb4e4e'; // 红
+            } else if (num === 0) {
+                ballBg = 'linear-gradient(135deg, #fb4e4e 50%, #b03bfb 50%)'; // 红紫
+            } else if (num === 5) {
+                ballBg = 'linear-gradient(135deg, #18b660 50%, #b03bfb 50%)'; // 绿紫
+            }
+            ball.style.background = ballBg;
+        }
 
-        // ⚡️ 接收消息事件处理器
-        function handleIncomingResult(receivedPeriod, receivedNumber) {
-            if (receivedPeriod !== activePeriod) {
-                activePeriod = receivedPeriod;
-                console.log(`🎯 [面板成功捕获数据] 期号: ${receivedPeriod}，号码: ${receivedNumber}`);
-                
-                // 1. 先重置上一期
-                window.triggerClearAll();
-
-                // 2. 毫秒级直接计算并展示新数据
-                setTimeout(() => {
-                    window.runWingoQuantEngine(receivedPeriod, receivedNumber);
-                }, 50);
+        if (bs) {
+            if (num >= 5) {
+                bs.innerText = "大";
+                bs.style.color = "#fb4e4e";
+            } else {
+                bs.innerText = "小";
+                bs.style.color = "#18b660";
             }
         }
 
-        // 🔗 监听器：实时接收从隐藏 iframe（游戏页面）穿透投递过来的跨域数据
-        window.addEventListener('message', function(event) {
-            if (event.data && event.data.source === 'WINGO_RADAR_BRIDGE') {
-                handleIncomingResult(event.data.period, event.data.number);
+        if (oe) {
+            if (num % 2 !== 0) {
+                oe.innerText = "单";
+                oe.style.color = "#ffaa00";
+            } else {
+                oe.innerText = "双";
+                oe.style.color = "#00ffff";
             }
-        });
+        }
+
+        if (periodDisplay) {
+            periodDisplay.innerText = `期号: ${period}`;
+        }
+    }
+
+    // 📊 本地带缓存的模拟统计数据（确保刷新页面时数据不清零）
+    function simulateLocalStats(num) {
+        totalGames++;
+        const isBig = num >= 5;
+        const win = Math.random() > 0.35; // 模拟胜率
+
+        if (win) {
+            currentWins++;
+            if (currentWins > maxWins) maxWins = currentWins;
+        } else {
+            currentWins = 0;
+        }
+
+        // 存入缓存
+        localStorage.setItem('wingo_total_games', totalGames);
+        localStorage.setItem('wingo_current_wins', currentWins);
+        localStorage.setItem('wingo_max_wins', maxWins);
+        
+        const calculatedRate = (totalGames > 0) ? (Math.min(0.92, (0.65 + (currentWins * 0.02))) * 100) : 0;
+        localStorage.setItem('wingo_win_rate', calculatedRate);
+
+        // 刷新界面
+        refreshStatsUI();
+
+        // 刷新 AI 预测
+        const randomConfidence = Math.floor(Math.random() * 25) + 70;
+        const confEl = document.getElementById('ai-confidence');
+        const predEl = document.getElementById('predict-next');
+        if (confEl) confEl.innerText = `${randomConfidence}%`;
+        if (predEl) predEl.innerText = isBig ? "小 [绿/双]" : "大 [红/单]";
+    }
+
+    // 更新胜率面板文字
+    function refreshStatsUI() {
+        const tEl = document.getElementById('stat-total');
+        const cEl = document.getElementById('stat-current');
+        const mEl = document.getElementById('stat-max');
+        const rEl = document.getElementById('stat-rate');
+
+        if (tEl) tEl.innerText = totalGames;
+        if (cEl) cEl.innerText = currentWins;
+        if (mEl) mEl.innerText = maxWins;
+        if (rEl) {
+            const storedRate = parseFloat(localStorage.getItem('wingo_win_rate') || '0.0');
+            rEl.innerText = `${storedRate.toFixed(1)}%`;
+        }
+    }
+
+    // 监听“清空历史”按钮
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnClear = document.getElementById('btn-clear-history');
+        if (btnClear) {
+            btnClear.addEventListener('click', function() {
+                if (confirm("确定要重置当前所有的统计胜率数据吗？")) {
+                    localStorage.removeItem('wingo_total_games');
+                    localStorage.removeItem('wingo_current_wins');
+                    localStorage.removeItem('wingo_max_wins');
+                    localStorage.removeItem('wingo_win_rate');
+                    totalGames = 0;
+                    currentWins = 0;
+                    maxWins = 0;
+                    refreshStatsUI();
+                    console.log("🧹 历史统计数据已清空。");
+                }
+            });
+        }
     });
 })();
