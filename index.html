@@ -3,124 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Virtual Predictor V3 - 专业量化仪表盘</title>
+    <title>AI Multi-Predictor V3 Pro - 量化旗舰看板</title>
     <link rel="stylesheet" href="style.css">
-    <!-- 引入 Chart.js 用于绘制走势图和统计图 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="dashboard-container">
-        <!-- 侧边栏：状态与核心控制 -->
+        <!-- 侧边栏：分类选择与核心控制 -->
         <aside class="sidebar">
             <div class="brand">
-                <h2>AI PREDICTOR <span class="version">V3 Pro</span></h2>
-            </div>
-            
-            <!-- 倒计时模块 -->
-            <div class="card timer-card">
-                <h3>下一期开奖倒计时</h3>
-                <div class="timer-display" id="countdown">30.0s</div>
-                <div class="period-info">当前期号: <span id="current-period">20260716001</span></div>
-                <div class="sync-status" id="sync-status">时间已与系统同步</div>
+                <h2>AI MULTI-PRO <span class="version">V3.5</span></h2>
             </div>
 
-            <!-- 核心数据统计 -->
+            <!-- 游戏分类切换器 (Category Switcher) -->
+            <div class="card category-card">
+                <h3>🎮 选择预测游戏类别</h3>
+                <div class="category-switcher">
+                    <button class="cat-btn active" id="cat-wingo" onclick="switchCategory('wingo')">
+                        <span class="icon">⚡</span> Wingo 30S <small>Mzplay</small>
+                    </button>
+                    <button class="cat-btn" id="cat-baccarat" onclick="switchCategory('baccarat')">
+                        <span class="icon">🃏</span> 百家乐 <small>DG Casino</small>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 动态计时器（两套游戏通用，逻辑内部自动切换） -->
+            <div class="card timer-card">
+                <h3 id="timer-title">Wingo 30S 下期倒计时</h3>
+                <div class="timer-display" id="countdown">30.0s</div>
+                <div class="period-info">当前期号: <span id="current-period">--</span></div>
+                <div class="sync-status" id="sync-status">系统时钟已同步</div>
+            </div>
+
+            <!-- 实时命中率统计（自动根据当前游戏类别独立统计） -->
             <div class="card stats-card">
-                <h3>实时命中率统计</h3>
+                <h3>数据统计 (<span id="stats-game-name">Wingo</span>)</h3>
                 <div class="stats-grid">
-                    <div class="stat-item">
-                        <div class="stat-label">总期数</div>
-                        <div class="stat-value" id="total-rounds">0</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">命中率</div>
-                        <div class="stat-value highlight" id="win-rate">0.0%</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">当前连胜</div>
-                        <div class="stat-value" id="current-streak">0</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">最高连胜</div>
-                        <div class="stat-value" id="max-streak">0</div>
-                    </div>
+                    <div class="stat-item"><div class="stat-label">总期数</div><div class="stat-value" id="total-rounds">0</div></div>
+                    <div class="stat-item"><div class="stat-label">命中率</div><div class="stat-value highlight" id="win-rate">0.0%</div></div>
+                    <div class="stat-item"><div class="stat-label">当前连胜</div><div class="stat-value" id="current-streak">0</div></div>
+                    <div class="stat-item"><div class="stat-label">最高连胜</div><div class="stat-value" id="max-streak">0</div></div>
                 </div>
             </div>
         </aside>
 
-        <!-- 主面板：预测与分析 -->
+        <!-- 主面板 -->
         <main class="main-content">
-            <!-- 顶部预测看板 -->
-            <section class="prediction-section">
-                <div class="card prediction-card">
-                    <div class="card-header">
-                        <h3>🤖 AI 实时预测推荐</h3>
-                        <div class="confidence-container">
-                            AI 信心值: <span id="confidence-level">0%</span>
-                            <div class="progress-bar"><div class="progress" id="confidence-bar"></div></div>
+            
+            <!-- ================= WINGO 30S 面板 (默认显示) ================= -->
+            <div id="panel-wingo" class="game-panel active-panel">
+                <section class="prediction-section">
+                    <div class="card prediction-card">
+                        <div class="card-header">
+                            <h3>🤖 AI Wingo 实时研判 (Mzplay 规则)</h3>
+                            <div class="confidence-container">AI 信心值: <span class="conf-val" id="wingo-conf">0%</span></div>
+                        </div>
+                        <div class="prediction-grid">
+                            <div class="pred-box"><span class="pred-title">号码取向</span><span class="pred-result" id="wp-num">--</span></div>
+                            <div class="pred-box"><span class="pred-title">大 / 小</span><span class="pred-result" id="wp-size">--</span></div>
+                            <div class="pred-box"><span class="pred-title">红 / 绿 / 紫</span><span class="pred-result" id="wp-color">--</span></div>
                         </div>
                     </div>
-                    <div class="prediction-grid">
-                        <div class="pred-box" id="pred-side">
-                            <span class="pred-title">庄 / 闲</span>
-                            <span class="pred-result">等待开奖</span>
-                        </div>
-                        <div class="pred-box" id="pred-size">
-                            <span class="pred-title">大 / 小</span>
-                            <span class="pred-result">等待开奖</span>
-                        </div>
-                        <div class="pred-box" id="pred-color">
-                            <span class="pred-title">红 / 绿 / 紫</span>
-                            <span class="pred-result">等待开奖</span>
-                        </div>
-                    </div>
-                </div>
-            </section>
+                </section>
 
-            <!-- 中部：数据分析与走势图 -->
-            <section class="analysis-section">
-                <!-- 综合策略评分 -->
-                <div class="card matrix-card">
-                    <h3>📊 AI 多维度策略矩阵评分</h3>
-                    <div class="matrix-grid">
-                        <div class="matrix-item"><span>热号追踪</span><span class="score" id="score-hot">--</span></div>
-                        <div class="matrix-item"><span>冷号遗漏</span><span class="score" id="score-cold">--</span></div>
-                        <div class="matrix-item"><span>邻号跳跃</span><span class="score" id="score-neighbor">--</span></div>
-                        <div class="matrix-item"><span>跨度震荡</span><span class="score" id="score-span">--</span></div>
-                        <div class="matrix-item"><span>单双奇偶</span><span class="score" id="score-oe">--</span></div>
-                        <div class="matrix-item"><span>大小形态</span><span class="score" id="score-bs">--</span></div>
+                <section class="analysis-section">
+                    <div class="card matrix-card">
+                        <h3>📊 Mzplay 数据策略矩阵评分</h3>
+                        <div class="matrix-grid" id="wingo-matrix">
+                            <!-- JS 动态注入 -->
+                        </div>
                     </div>
-                </div>
-
-                <!-- 走势图表 -->
-                <div class="card chart-card">
-                    <h3>📈 最近 20 期趋势波动图</h3>
-                    <div class="chart-container">
-                        <canvas id="trendChart"></canvas>
+                    <div class="card chart-card">
+                        <h3>📈 最近 20 期趋势波动图</h3>
+                        <div class="chart-container"><canvas id="trendChartWingo"></canvas></div>
                     </div>
-                </div>
-            </section>
+                </section>
+            </div>
 
-            <!-- 底部：历史记录 -->
+            <!-- ================= 百家乐 面板 (默认隐藏) ================= -->
+            <div id="panel-baccarat" class="game-panel">
+                <section class="prediction-section">
+                    <div class="card prediction-card bac-card">
+                        <div class="card-header">
+                            <h3>🤖 AI 百家乐智能决策 (DG 旗舰规则)</h3>
+                            <div class="confidence-container">AI 信心值: <span class="conf-val" id="bac-conf">0%</span></div>
+                        </div>
+                        <div class="prediction-grid baccarat-grid">
+                            <div class="pred-box bac-main-box" id="bp-side">
+                                <span class="pred-title">核心推荐倾向</span>
+                                <span class="pred-result">等待下一桌</span>
+                            </div>
+                            <div class="pred-box"><span class="pred-title">对子几率</span><span class="pred-result" id="bp-pair">--</span></div>
+                            <div class="pred-box"><span class="pred-title">天生赢家率 (8/9点)</span><span class="pred-result" id="bp-natural">--</span></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="analysis-section">
+                    <div class="card matrix-card">
+                        <h3>📊 DG 路单与概率矩阵分析</h3>
+                        <div class="matrix-grid" id="bac-matrix">
+                            <!-- JS 动态注入 -->
+                        </div>
+                    </div>
+                    <div class="card chart-card">
+                        <h3>📉 庄闲旺衰差值走势 (大眼仔变频)</h3>
+                        <div class="chart-container"><canvas id="trendChartBac"></canvas></div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 底部通用：历史记录 -->
             <section class="history-section">
                 <div class="card history-card">
                     <div class="card-header">
-                        <h3>📝 最近 100 期开奖与预测历史</h3>
-                        <button class="btn-clear" id="btn-clear-data">清空本地数据</button>
+                        <h3>📝 实时开奖与预测历史流水</h3>
+                        <button class="btn-clear" id="btn-clear-data">清空当前分类数据</button>
                     </div>
                     <div class="table-wrapper">
                         <table id="history-table">
-                            <thead>
-                                <tr>
-                                    <th>期号</th>
-                                    <th>开奖号码</th>
-                                    <th>形态 (庄闲/大小/颜色)</th>
-                                    <th>AI 预测内容</th>
-                                    <th>预测结果</th>
-                                </tr>
+                            <thead id="history-thead">
+                                <!-- JS 根据游戏动态渲染表头 -->
                             </thead>
                             <tbody id="history-tbody">
-                                <!-- 由 JavaScript 动态渲染 -->
+                                <!-- JS 动态渲染 -->
                             </tbody>
                         </table>
                     </div>
@@ -129,7 +136,7 @@
         </main>
     </div>
 
-    <!-- 模块化脚本加载顺序 -->
+    <!-- 脚本加载 -->
     <script src="storage.js"></script>
     <script src="timer.js"></script>
     <script src="strategy.js"></script>
