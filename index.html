@@ -1,294 +1,140 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <title>虚拟开奖程序 - 智能预测</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      display: flex;
-      height: 100vh;
-      background: #f0f0f0;
-    }
-    .sidebar {
-      width: 200px;
-      background: #333;
-      color: white;
-      padding-top: 20px;
-    }
-    .sidebar button {
-      width: 100%;
-      padding: 15px;
-      border: none;
-      background: none;
-      color: white;
-      font-size: 16px;
-      text-align: left;
-      cursor: pointer;
-    }
-    .sidebar button:hover {
-      background: #444;
-    }
-    .content {
-      flex-grow: 1;
-      padding: 20px;
-    }
-    .log {
-      white-space: pre-wrap;
-      background: #fff;
-      padding: 15px;
-      border: 1px solid #ccc;
-      height: 400px;
-      overflow-y: scroll;
-    }
-    input { padding: 5px; font-size: 16px; }
-    button.submit-btn { padding: 5px 10px; font-size: 16px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Virtual Predictor V3 - 专业量化仪表盘</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- 引入 Chart.js 用于绘制走势图和统计图 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div class="sidebar">
-    <button onclick="setMode(30)">🎰 每30秒开奖</button>
-    <button onclick="setMode(60)">⏱️ 每1分钟开奖</button>
-  </div>
+    <div class="dashboard-container">
+        <!-- 侧边栏：状态与核心控制 -->
+        <aside class="sidebar">
+            <div class="brand">
+                <h2>AI PREDICTOR <span class="version">V3 Pro</span></h2>
+            </div>
+            
+            <!-- 倒计时模块 -->
+            <div class="card timer-card">
+                <h3>下一期开奖倒计时</h3>
+                <div class="timer-display" id="countdown">30.0s</div>
+                <div class="period-info">当前期号: <span id="current-period">20260716001</span></div>
+                <div class="sync-status" id="sync-status">时间已与系统同步</div>
+            </div>
 
-  <div class="content">
-    <h2 id="title">🎰 每30秒开奖 | 显示结果后可输入 | 自动预测下一轮</h2>
-    <div class="log" id="log"></div>
-    <div>
-      <label for="userInput">⌨️ 请输入开奖号码（0-9）: </label>
-      <input type="number" id="userInput" min="0" max="9">
-      <button class="submit-btn" onclick="submitNumber()">提交</button>
+            <!-- 核心数据统计 -->
+            <div class="card stats-card">
+                <h3>实时命中率统计</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">总期数</div>
+                        <div class="stat-value" id="total-rounds">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">命中率</div>
+                        <div class="stat-value highlight" id="win-rate">0.0%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">当前连胜</div>
+                        <div class="stat-value" id="current-streak">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">最高连胜</div>
+                        <div class="stat-value" id="max-streak">0</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 主面板：预测与分析 -->
+        <main class="main-content">
+            <!-- 顶部预测看板 -->
+            <section class="prediction-section">
+                <div class="card prediction-card">
+                    <div class="card-header">
+                        <h3>🤖 AI 实时预测推荐</h3>
+                        <div class="confidence-container">
+                            AI 信心值: <span id="confidence-level">0%</span>
+                            <div class="progress-bar"><div class="progress" id="confidence-bar"></div></div>
+                        </div>
+                    </div>
+                    <div class="prediction-grid">
+                        <div class="pred-box" id="pred-side">
+                            <span class="pred-title">庄 / 闲</span>
+                            <span class="pred-result">等待开奖</span>
+                        </div>
+                        <div class="pred-box" id="pred-size">
+                            <span class="pred-title">大 / 小</span>
+                            <span class="pred-result">等待开奖</span>
+                        </div>
+                        <div class="pred-box" id="pred-color">
+                            <span class="pred-title">红 / 绿 / 紫</span>
+                            <span class="pred-result">等待开奖</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 中部：数据分析与走势图 -->
+            <section class="analysis-section">
+                <!-- 综合策略评分 -->
+                <div class="card matrix-card">
+                    <h3>📊 AI 多维度策略矩阵评分</h3>
+                    <div class="matrix-grid">
+                        <div class="matrix-item"><span>热号追踪</span><span class="score" id="score-hot">--</span></div>
+                        <div class="matrix-item"><span>冷号遗漏</span><span class="score" id="score-cold">--</span></div>
+                        <div class="matrix-item"><span>邻号跳跃</span><span class="score" id="score-neighbor">--</span></div>
+                        <div class="matrix-item"><span>跨度震荡</span><span class="score" id="score-span">--</span></div>
+                        <div class="matrix-item"><span>单双奇偶</span><span class="score" id="score-oe">--</span></div>
+                        <div class="matrix-item"><span>大小形态</span><span class="score" id="score-bs">--</span></div>
+                    </div>
+                </div>
+
+                <!-- 走势图表 -->
+                <div class="card chart-card">
+                    <h3>📈 最近 20 期趋势波动图</h3>
+                    <div class="chart-container">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 底部：历史记录 -->
+            <section class="history-section">
+                <div class="card history-card">
+                    <div class="card-header">
+                        <h3>📝 最近 100 期开奖与预测历史</h3>
+                        <button class="btn-clear" id="btn-clear-data">清空本地数据</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="history-table">
+                            <thead>
+                                <tr>
+                                    <th>期号</th>
+                                    <th>开奖号码</th>
+                                    <th>形态 (庄闲/大小/颜色)</th>
+                                    <th>AI 预测内容</th>
+                                    <th>预测结果</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-tbody">
+                                <!-- 由 JavaScript 动态渲染 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
     </div>
-  </div>
 
-  <script>
-    let roundNum = 1;
-    let history = [];
-    let lastPredicted = null;
-    let inputAllowed = false;
-    let timeoutId = null;
-    let currentInterval = 30;
-    let lastDrawSecond = -1;
-
-    // 统计数据
-    let totalRounds = 0;
-    let correctNum = 0;
-    let correctSize = 0;
-    let correctColor = 0;
-
-    const strategyNames = {
-      guessNearby: "相邻号法",
-      guessHot: "热号策略",
-      guessCold: "冷号策略",
-      guessRepeat: "重复策略",
-      guessFlipOddEven: "奇偶互转",
-      guessDiagonalJump: "斜跳走势",
-      guessByVibe: "心理感觉法"
-    };
-
-    function rand(min, max) {
-      return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-
-    function log(message) {
-      const logDiv = document.getElementById("log");
-      logDiv.innerText += message + "\n";
-      logDiv.scrollTop = logDiv.scrollHeight;
-    }
-
-    function clearAll() {
-      document.getElementById("log").innerText = "";
-      roundNum = 1;
-      history = [];
-      lastPredicted = null;
-      inputAllowed = false;
-      if (timeoutId) clearTimeout(timeoutId);
-      totalRounds = 0;
-      correctNum = 0;
-      correctSize = 0;
-      correctColor = 0;
-    }
-
-    function getSize(num) {
-      return num <= 4 ? "小" : "大";
-    }
-
-    function getColor(num) {
-      if (num === 0) return ["红色", "紫色"];
-      if (num === 5) return ["绿色", "紫色"];
-      return num % 2 === 0 ? ["红色"] : ["绿色"];
-    }
-
-    function getColorIcon(color) {
-      const icons = { "红色": "🔴", "绿色": "🟢", "紫色": "🟣" };
-      return icons[color] || color;
-    }
-
-    function formatColorIcons(colors) {
-      return colors.map(c => getColorIcon(c)).join(" ");
-    }
-
-    // --------- 智能预测策略集 ---------
-    function guessNearby(history) {
-      const base = history[history.length - 1][0];
-      const num = Math.max(0, Math.min(9, base + rand(-1, 1)));
-      return [num, getSize(num)];
-    }
-
-    function guessHot(history) {
-      const freq = Array(10).fill(0);
-      history.forEach(h => h && freq[h[0]]++);
-      const hot = freq.indexOf(Math.max(...freq));
-      return [hot, getSize(hot)];
-    }
-
-    function guessCold(history) {
-      const freq = Array(10).fill(0);
-      history.forEach(h => h && freq[h[0]]++);
-      const cold = freq.indexOf(Math.min(...freq));
-      return [cold, getSize(cold)];
-    }
-
-    function guessRepeat(history) {
-      const num = history[history.length - 1][0];
-      return [num, getSize(num)];
-    }
-
-    function guessFlipOddEven(history) {
-      const last = history[history.length - 1][0];
-      const num = (last % 2 === 0) ? last + 1 : last - 1;
-      const safeNum = (num < 0 || num > 9) ? rand(0, 9) : num;
-      return [safeNum, getSize(safeNum)];
-    }
-
-    function guessDiagonalJump(history) {
-      if (history.length < 2) return [rand(0, 9), getSize(rand(0, 9))];
-      const n1 = history[history.length - 1][0];
-      const n2 = history[history.length - 2][0];
-      const diff = n1 - n2;
-      const predicted = n1 + diff;
-      const safe = Math.max(0, Math.min(9, predicted));
-      return [safe, getSize(safe)];
-    }
-
-    function guessByVibe(history) {
-      const vibeNums = [3, 6, 8, 0, 9, 5, 1];
-      const num = vibeNums[rand(0, vibeNums.length - 1)];
-      return [num, getSize(num)];
-    }
-
-    function smartPredictor(history) {
-      if (history.length === 0) {
-        const num = rand(0, 9);
-        return { num, size: getSize(num), strategy: "随机初始" };
-      }
-      const strategies = [
-        guessNearby,
-        guessHot,
-        guessCold,
-        guessRepeat,
-        guessFlipOddEven,
-        guessDiagonalJump,
-        guessByVibe
-      ];
-      const chosen = strategies[rand(0, strategies.length - 1)];
-      const [num, size] = chosen(history);
-      return { num, size, strategy: strategyNames[chosen.name] || "未知" };
-    }
-
-    function drawRound() {
-      const now = new Date();
-      const timeStr = now.toTimeString().split(" ")[0];
-      log(`\n⏰ 第 ${roundNum} 轮开奖时间 - ${timeStr}`);
-      log("🎲 正在开奖中……");
-      inputAllowed = true;
-
-      timeoutId = setTimeout(() => {
-        if (inputAllowed) {
-          log("⚠️ 未输入或输入无效，本轮跳过");
-          history.push(null);
-          inputAllowed = false;
-          afterDraw();
-        }
-      }, 15000);
-    }
-
-    function submitNumber() {
-      if (!inputAllowed) return;
-      inputAllowed = false; // 防止重复提交
-      const input = document.getElementById("userInput").value;
-      const num = parseInt(input);
-      if (!isNaN(num) && num >= 0 && num <= 9) {
-        clearTimeout(timeoutId);
-        const size = getSize(num);
-        const colors = getColor(num);
-        log(`🎯 开奖结果：${num} -> ${size} | 颜色：${formatColorIcons(colors)}`);
-        history.push([num, size, colors]);
-        afterDraw();
-      } else {
-        log("⚠️ 输入无效，请输入 0-9 的数字");
-        afterDraw();
-      }
-    }
-
-    function afterDraw() {
-      const cleanHistory = history.filter(h => h !== null);
-      const prediction = smartPredictor(cleanHistory);
-      const predictedColors = getColor(prediction.num);
-
-      log(`🔮 预测第 ${roundNum + 1} 轮：${prediction.num} -> ${prediction.size} | 颜色：${formatColorIcons(predictedColors)}`);
-      log(`🧠 使用策略：${prediction.strategy}`);
-
-      if (lastPredicted && history.length >= 1) {
-        const actual = history[history.length - 1];
-        if (actual) {
-          const [actNum, actSize, actColors] = actual;
-          const matchNum = actNum === lastPredicted.num ? "✅" : "❌";
-          const matchSize = actSize === lastPredicted.size ? "✅" : "❌";
-          const matchColor = getColor(lastPredicted.num).some(c => actColors.includes(c)) ? "✅" : "❌";
-
-          totalRounds++;
-          if (matchNum === "✅") correctNum++;
-          if (matchSize === "✅") correctSize++;
-          if (matchColor === "✅") correctColor++;
-
-          log(`📋 上轮预测比对：`);
-          log(`号码：${lastPredicted.num} ${matchNum}`);
-          log(`颜色：${formatColorIcons(getColor(lastPredicted.num))} ${matchColor}`);
-          log(`大小：${lastPredicted.size} ${matchSize}`);
-          log(`📊 总局数：${totalRounds} | 号码命中率 ${(correctNum/totalRounds*100).toFixed(1)}% | 大小命中率 ${(correctSize/totalRounds*100).toFixed(1)}% | 颜色命中率 ${(correctColor/totalRounds*100).toFixed(1)}%`);
-        } else {
-          log("📋 上轮预测比对：无数据");
-        }
-      }
-
-      lastPredicted = prediction;
-      log(`----------------------`);
-      roundNum++;
-    }
-
-    function setMode(intervalSec) {
-      clearAll();
-      currentInterval = intervalSec;
-      const titleMap = {
-        30: "🎰 每30秒开奖",
-        60: "⏱️ 每1分钟开奖"
-      };
-      document.getElementById("title").innerText = `${titleMap[intervalSec]} | 显示结果后可输入 | 自动预测下一轮`;
-      log(`🔄 切换到【${intervalSec}秒】模式，已重置数据`);
-    }
-
-    // 默认启动 30 秒模式
-    setMode(30);
-
-    setInterval(() => {
-      const now = new Date();
-      if (now.getSeconds() % currentInterval === 0 && now.getSeconds() !== lastDrawSecond) {
-        lastDrawSecond = now.getSeconds();
-        drawRound();
-      }
-    }, 200);
-  </script>
+    <!-- 模块化脚本加载顺序 -->
+    <script src="storage.js"></script>
+    <script src="timer.js"></script>
+    <script src="strategy.js"></script>
+    <script src="predictor.js"></script>
+    <script src="chart.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
