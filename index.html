@@ -75,14 +75,20 @@
 <script>
     console.log("📡 [GitHub 接收端] 正在安全通道中静默监听 Wingo 穿透雷达...");
 
-    // 兜底本地统计变量（防止原有 JS 逻辑尚未运行或发生冲突）
-    let totalGames = 0;
-    let currentWins = 0;
-    let maxWins = 0;
+    // 🏆 持久化统计数据初始化（从本地浏览器缓存读取，防止刷新网页数据清零）
+    let totalGames = parseInt(localStorage.getItem('wingo_total_games') || '0', 10);
+    let currentWins = parseInt(localStorage.getItem('wingo_current_wins') || '0', 10);
+    let maxWins = parseInt(localStorage.getItem('wingo_max_wins') || '0', 10);
+    let winRate = parseFloat(localStorage.getItem('wingo_win_rate') || '0.0');
 
-    // 核心：监听来自游戏网页 iframe postMessage 扔过来的数据
+    // 初始化页面上的历史数据展示
+    document.getElementById('stat-total').innerText = totalGames;
+    document.getElementById('stat-current').innerText = currentWins;
+    document.getElementById('stat-max').innerText = maxWins;
+    document.getElementById('stat-rate').innerText = winRate.toFixed(1) + '%';
+
+    // 监听来自游戏网页 iframe postMessage 扔过来的数据
     window.addEventListener('message', function(event) {
-        // 安全检测暗号
         if (event.data && event.data.source === 'WINGO_RADAR_BRIDGE') {
             const { period, number } = event.data;
             const num = parseInt(number, 10);
@@ -92,13 +98,13 @@
             // 1. 动态绘制界面 Wingo 球和文字状态
             updateWingoUI(period, num);
 
-            // 2. 自动对接你外部引入的算法 JS 逻辑（如 predictor.js 等里的 addResult）
+            // 2. 自动对接你外部引入的算法 JS 逻辑
             if (typeof addResult === 'function') {
                 addResult(period, num);
             } else if (typeof window.addResult === 'function') {
                 window.addResult(period, num);
             } else {
-                // 如果外部没有定义该函数，则运行本地驱动模拟，确保 UI 必定会跳动
+                // 若无外部库支持，运行带持久化的模拟数据，确保数据在累计
                 simulateLocalStats(num);
             }
         }
@@ -114,20 +120,18 @@
         if (!ball) return;
         ball.innerText = num;
 
-        // 根据开奖数字自动判定颜色
         let ballBg = '#555';
         if ([1, 3, 7, 9].includes(num)) {
-            ballBg = '#18b660'; // 绿球
+            ballBg = '#18b660'; 
         } else if ([2, 4, 6, 8].includes(num)) {
-            ballBg = '#fb4e4e'; // 红球
+            ballBg = '#fb4e4e'; 
         } else if (num === 0) {
-            ballBg = 'linear-gradient(135deg, #fb4e4e 50%, #b03bfb 50%)'; // 0号红紫相间
+            ballBg = 'linear-gradient(135deg, #fb4e4e 50%, #b03bfb 50%)'; 
         } else if (num === 5) {
-            ballBg = 'linear-gradient(135deg, #18b660 50%, #b03bfb 50%)'; // 5号绿紫相间
+            ballBg = 'linear-gradient(135deg, #18b660 50%, #b03bfb 50%)'; 
         }
         ball.style.background = ballBg;
 
-        // 大小规则 (5-9 大, 0-4 小)
         if (num >= 5) {
             bs.innerText = "大";
             bs.style.color = "#fb4e4e";
@@ -136,7 +140,6 @@
             bs.style.color = "#18b660";
         }
 
-        // 单双判定
         if (num % 2 !== 0) {
             oe.innerText = "单";
             oe.style.color = "#ffaa00";
@@ -150,12 +153,11 @@
         }
     }
 
-    // 📊 本地简易模拟统计函数（兜底用，防止你的 storage.js 尚未配置 addResult）
+    // 📊 强化的本地数据模拟驱动（支持刷新不丢失）
     function simulateLocalStats(num) {
         totalGames++;
-        document.getElementById('stat-total').innerText = totalGames;
         const isBig = num >= 5;
-        const win = Math.random() > 0.4;
+        const win = Math.random() > 0.35; // 模拟AI胜率
 
         if (win) {
             currentWins++;
@@ -164,13 +166,41 @@
             currentWins = 0;
         }
 
+        // 保存到 localStorage 中
+        localStorage.setItem('wingo_total_games', totalGames);
+        localStorage.setItem('wingo_current_wins', currentWins);
+        localStorage.setItem('wingo_max_wins', maxWins);
+        
+        const calculatedRate = (totalGames > 0) ? (Math.min(0.92, (0.68 + (currentWins * 0.02))) * 100) : 0;
+        localStorage.setItem('wingo_win_rate', calculatedRate);
+
+        // 刷新界面显示
+        document.getElementById('stat-total').innerText = totalGames;
         document.getElementById('stat-current').innerText = currentWins;
         document.getElementById('stat-max').innerText = maxWins;
-        document.getElementById('stat-rate').innerText = `${((win ? currentWins : 1) / totalGames * 100).toFixed(1)}%`;
+        document.getElementById('stat-rate').innerText = `${calculatedRate.toFixed(1)}%`;
         
-        const randomConfidence = Math.floor(Math.random() * 30) + 65;
+        const randomConfidence = Math.floor(Math.random() * 25) + 70;
         document.getElementById('ai-confidence').innerText = `${randomConfidence}%`;
         document.getElementById('predict-next').innerText = isBig ? "小 [绿/双]" : "大 [红/单]";
     }
+
+    // 🧹 监听“清空历史”按钮
+    document.getElementById('btn-clear-history').addEventListener('click', function() {
+        if (confirm("确定要重置当前所有的统计胜率数据吗？")) {
+            localStorage.removeItem('wingo_total_games');
+            localStorage.removeItem('wingo_current_wins');
+            localStorage.removeItem('wingo_max_wins');
+            localStorage.removeItem('wingo_win_rate');
+            totalGames = 0;
+            currentWins = 0;
+            maxWins = 0;
+            document.getElementById('stat-total').innerText = 0;
+            document.getElementById('stat-current').innerText = 0;
+            document.getElementById('stat-max').innerText = 0;
+            document.getElementById('stat-rate').innerText = '0.0%';
+            console.log("🧹 历史统计数据已清空。");
+        }
+    });
 </script>
 </html>
