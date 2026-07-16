@@ -1,104 +1,93 @@
 /**
- * AI Virtual Predictor V3 - 走势图表动态绘制模块
- * 基于 Chart.js 封装，提供黑金风格的折线图渲染
+ * AI Multi-Predictor V3.5 - 独立网格双画布图表管理器
+ * 核心逻辑：独立实例化并缓存 Wingo 与 百家乐 两套不同的数据曲线
  */
 const ChartManager = {
-    chartInstance: null,
+    instances: {
+        wingo: null,
+        baccarat: null
+    },
 
     /**
-     * 初始化图表实例
-     * @param {string} canvasId HTML中的Canvas标签ID
+     * 一键初始化所有图表画布
      */
-    init(canvasId) {
-        const ctx = document.getElementById(canvasId);
+    initAll() {
+        this.initWingoChart();
+        this.initBaccaratChart();
+    },
+
+    /**
+     * 初始化 Wingo 趋势图 (0-9 绝对号码起伏)
+     */
+    initWingoChart() {
+        const ctx = document.getElementById('trendChartWingo');
         if (!ctx) return;
+        
+        if (this.instances.wingo) this.instances.wingo.destroy();
 
-        // 如果已经存在实例，先销毁，防止重复初始化导致内存泄漏
-        if (this.chartInstance) {
-            this.chartInstance.destroy();
-        }
-
-        // 创建 Chart.js 实例
-        this.chartInstance = new Chart(ctx, {
+        this.instances.wingo = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: [], // 期号后缀数组
-                datasets: [{
-                    label: '开奖号码波动趋势',
-                    data: [], // 0-9 历史号码
-                    borderColor: '#f0b90b', // 金色线条
-                    borderWidth: 2,
-                    pointBackgroundColor: '#0ecb81', // 绿色圆点
-                    pointBorderColor: '#181a20',
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    backgroundColor: 'rgba(240, 185, 11, 0.05)', // 线条下方半透明金色渐变填涂
-                    fill: true,
-                    tension: 0.35 // 贝塞尔曲线弧度，让走势更丝滑
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false // 隐藏顶部的标签图例，保持视觉极简
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        backgroundColor: '#1c1f26',
-                        titleColor: '#848e9c',
-                        bodyColor: '#eaecef',
-                        borderColor: '#2b2f3a',
-                        borderWidth: 1
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.03)'
-                        },
-                        ticks: {
-                            color: '#848e9c',
-                            font: { size: 10 }
-                        }
-                    },
-                    y: {
-                        min: 0,
-                        max: 9,
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.05)'
-                        },
-                        ticks: {
-                            stepSize: 1,
-                            color: '#848e9c',
-                            font: { family: 'monospace' }
-                        }
-                    }
-                }
-            }
+            data: { labels: [], datasets: [{ data: [], borderColor: '#f0b90b', borderWidth: 2, pointBackgroundColor: '#0ecb81', backgroundColor: 'rgba(240, 185, 11, 0.02)', fill: true, tension: 0.35 }] },
+            options: this.getCommonOptions(0, 9, '期号数字波动')
         });
     },
 
     /**
-     * 根据最新的历史数据动态同步刷新图表
-     * @param {Array} history 全量历史开奖数据
+     * 初始化 百家乐 旺衰图 (模拟大眼仔变频差值走势)
      */
-    update(history) {
-        if (!this.chartInstance) return;
+    initBaccaratChart() {
+        const ctx = document.getElementById('trendChartBac');
+        if (!ctx) return;
 
-        // 截取最近的 20 期，并将其反转（让最新的数据呈现在图表最右侧）
-        const recentData = history.slice(0, 20).reverse();
+        if (this.instances.baccarat) this.instances.baccarat.destroy();
 
-        // 提取期号的最后 4 位作为 X 轴标签
-        const labels = recentData.map(item => item.period.slice(-4) + '期');
-        // 提取具体的号码值作为 Y 轴数据
-        const dataValues = recentData.map(item => Number(item.number));
+        this.instances.baccarat = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: [{ data: [], borderColor: '#0052d9', borderWidth: 2, pointBackgroundColor: '#e02020', backgroundColor: 'rgba(0, 82, 219, 0.02)', fill: true, tension: 0.2 }] },
+            options: this.getCommonOptions(-3, 3, '大眼仔趋势量化')
+        });
+    },
 
-        // 注入新数据并重绘
-        this.chartInstance.data.labels = labels;
-        this.chartInstance.data.datasets[0].data = dataValues;
-        this.chartInstance.update('none'); // 使用 'none' 模式进行高性能无感更新
+    /**
+     * 通用配置模板生成
+     */
+    getCommonOptions(minY, maxY, labelName) {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, backgroundColor: '#14161c', borderColor: '#222630', borderWidth: 1 } },
+            scales: {
+                x: { grid: { color: 'rgba(255, 255, 255, 0.02)' }, ticks: { color: '#707a8a', font: { size: 9 } } },
+                y: { min: minY, max: maxY, grid: { color: 'rgba(255, 255, 255, 0.04)' }, ticks: { color: '#707a8a', font: { family: 'monospace' } } }
+            }
+        };
+    },
+
+    /**
+     * 分类调度刷新对应的图表曲线
+     */
+    update(gameId, history) {
+        const chart = this.instances[gameId];
+        if (!chart) return;
+
+        const recent = history.slice(0, 20).reverse();
+        const labels = recent.map(item => item.period.slice(-4));
+        
+        let dataValues = [];
+        if (gameId === 'wingo') {
+            dataValues = recent.map(item => Number(item.number));
+        } else {
+            // 百家乐映射：将 庄 映射为 1，闲 映射为 -1，和 映射为 0，生成一条资金流走势般的旺衰曲线
+            let curValue = 0;
+            dataValues = recent.map(item => {
+                if (item.side === '庄') curValue = Math.min(3, curValue + 1);
+                else if (item.side === '闲') curValue = Math.max(-3, curValue - 1);
+                return curValue;
+            });
+        }
+
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = dataValues;
+        chart.update('none'); // 高性能静默重绘
     }
 };
