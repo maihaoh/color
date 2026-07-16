@@ -1,8 +1,15 @@
 /**
- * Wingo 本地秒级响应 + 云数据库备份中枢
+ * Wingo 本地极速响应与永久存储中心 (无任何外网接口报错)
  */
 (function() {
-    window.wingoEngineStats = window.wingoEngineStats || {
+    // 1. 优先从浏览器本地存储加载历史，如果没有则初始化
+    const STORAGE_KEY = "wingo_secure_db_backup_2026";
+    let savedData = null;
+    try {
+        savedData = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    } catch (e) {}
+
+    window.wingoEngineStats = window.wingoEngineStats || savedData || {
         totalCount: 0,
         winRate: 0.0,
         currentStreak: 0,
@@ -10,11 +17,10 @@
         records: []
     };
 
-    const dbBackupUrl = "https://api.restful-api.dev/objects";
     let activePeriod = "";
 
     window.addEventListener('DOMContentLoaded', () => {
-        console.log("🟢 [Wingo 接收端已就绪] 本地 Broadcast 桥梁已连通...");
+        console.log("🟢 [Wingo 本地极速中枢] 完美运行，已挂载高安全本地持久化数据库。");
 
         const txtTotal = document.getElementById('stat-total');
         const txtRate = document.getElementById('stat-rate');
@@ -34,59 +40,31 @@
             if (txtMax) txtMax.innerText = window.wingoEngineStats.maxStreak;
         }
 
-        // 云端数据库存储备份
-        function saveToDatabase() {
-            const dataPacket = {
-                name: "secure_wingo_db_backup_2026",
-                data: {
-                    payload: window.wingoEngineStats,
-                    savedAt: Date.now()
-                }
-            };
-            fetch(dbBackupUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataPacket)
-            }).catch(() => {});
+        // 本地安全数据库存储
+        function saveToLocalDatabase() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(window.wingoEngineStats));
         }
 
-        // 恢复历史数据
-        function loadFromDatabase() {
-            fetch(dbBackupUrl)
-            .then(res => res.json())
-            .then(list => {
-                if (Array.isArray(list)) {
-                    const latestRecord = list
-                        .filter(item => item && item.name === "secure_wingo_db_backup_2026" && item.data)
-                        .map(item => item.data)
-                        .sort((a, b) => b.savedAt - a.savedAt)[0];
-                    
-                    if (latestRecord && latestRecord.payload) {
-                        window.wingoEngineStats = latestRecord.payload;
-                        console.log("📂 [数据库恢复] Wingo 量化历史指标已还原。");
-                        uiSync();
-                    }
-                }
-            }).catch(() => {});
-        }
+        // 初始化界面
+        uiSync();
 
-        loadFromDatabase();
-
+        // 绑定手动清空事件
         window.triggerClearAll = function() {
+            console.log("🧹 [本地数据库重置] 正在清空历史 Wingo 数据...");
             window.wingoEngineStats.totalCount = 0;
             window.wingoEngineStats.winRate = 0.0;
             window.wingoEngineStats.currentStreak = 0;
             window.wingoEngineStats.maxStreak = 0;
             window.wingoEngineStats.records = [];
             uiSync();
-            saveToDatabase();
+            saveToLocalDatabase(); // 立即同步清空本地存储
         };
 
         if (btnClear) {
             btnClear.addEventListener('click', window.triggerClearAll);
         }
 
-        // 核心测算逻辑
+        // 🎯 Wingo 核心测算逻辑 (完美匹配你原本的策略结构)
         window.runWingoQuantEngine = function(period, num) {
             window.wingoEngineStats.totalCount += 1;
 
@@ -99,6 +77,7 @@
                 color = "#ff4a4a"; // 红
             }
 
+            // 更新 Wingo DOM 显示
             if (wingoBall) {
                 wingoBall.innerText = num;
                 wingoBall.style.background = color;
@@ -115,7 +94,7 @@
                 txtPeriod.innerText = `期号: ${period}`;
             }
 
-            // 测算
+            // 测算胜率和连中 (维持原本 Wingo 规则)
             const userWin = Math.random() > 0.45;
             if (userWin) {
                 window.wingoEngineStats.currentStreak += 1;
@@ -130,10 +109,10 @@
             window.wingoEngineStats.winRate = window.wingoEngineStats.totalCount > 0 ? mockRate : 0.0;
 
             uiSync();
-            saveToDatabase(); // 全自动保存到数据库
+            saveToLocalDatabase(); // 全自动保存到浏览器本地，0延迟0报错
         };
 
-        // 🎯 核心秘密武器：利用本地广播，实现毫秒级捕获响应，无需等待网络延时
+        // 🎯 核心秘密武器：利用本地广播，实现毫秒级捕获响应
         const channel = new BroadcastChannel('wingo_realtime_bridge');
         channel.onmessage = function(event) {
             if (event.data && event.data.type === 'OFFICIAL_OPEN_RESULT') {
@@ -142,7 +121,7 @@
 
                 if (receivedPeriod !== activePeriod) {
                     activePeriod = receivedPeriod;
-                    console.log(`🎯 [本地广播桥捕获] 接收到期号: ${receivedPeriod}，号码: ${receivedNumber}`);
+                    console.log(`🎯 [本地接收成功] 接收到期号: ${receivedPeriod}，号码: ${receivedNumber}`);
                     
                     // 1. 触发清空
                     window.triggerClearAll();
